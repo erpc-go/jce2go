@@ -1,3 +1,5 @@
+github.com/edte/erpc v0.0.0-20220920115844-e159d7d44548 h1:VBVq8To1XqenlSElH/JqLczJlUycW2VnSdFZaW70hE8=
+github.com/edte/erpc v0.0.0-20220920115844-e159d7d44548/go.mod h1:oEuBq7+V5mv2gW/0Bi/Qe5m5J3dZe8C9NFuEJh3MH30=
 github.com/edte/erpc v0.0.0-20220920120304-435a2d9cdb20 h1:9IcY0Xbu8zx3EhEs3gMgpjcGjgkhuypf/E2IvlyreDs=
 github.com/edte/erpc v0.0.0-20220920120304-435a2d9cdb20/go.mod h1:oEuBq7+V5mv2gW/0Bi/Qe5m5J3dZe8C9NFuEJh3MH30=
 github.com/edte/erpc v0.0.0-20220929080508-590e15d9597a h1:HLYkGz3rSkIXWon+Qn5N5MJWnvtSzPX+uvoJ/FUjOds=
@@ -8,6 +10,7 @@ github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaS
 github.com/golang/protobuf v1.5.2 h1:ROPKBNFfQgOUMifHyP+KYbvpjbdoFNs+aK7DXlji0Tw=
 github.com/golang/protobuf v1.5.2/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiuN0vRsmY=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+github.com/smartystreets/assertions v1.13.0 h1:Dx1kYM01xsSqKPno3aqLnrwac2LetPvN23diwyr69Qs=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=

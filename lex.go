@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// TODO: 弄懂词法分析的原理
+
 // EOS is byte stream terminator
 const EOS = 0
 

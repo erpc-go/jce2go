@@ -432,7 +432,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	// [step 16.3] write data
 	for _, v18 := range st.Arr3 {
 		// [step 0] write v18
-		if _, err = v18.WriteTo(w); err != nil {
+		if _, err = v18.WriteTo(encoder.Writer()); err != nil {
 			return
 		}
 	}
@@ -452,7 +452,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 			return
 		}
 		// [step 1] write v19
-		if _, err = v19.WriteTo(w); err != nil {
+		if _, err = v19.WriteTo(encoder.Writer()); err != nil {
 			return
 		}
 	}

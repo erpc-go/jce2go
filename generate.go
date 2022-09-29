@@ -543,7 +543,7 @@ func (gen *Generate) genWriteVar(v *StructMember, prefix string, hasRet bool) {
 		}
 
 		gen.writeString(`
-        if _, err = ` + prefix + v.Key + `.WriteTo(w); err != nil {
+        if _, err = ` + prefix + v.Key + `.WriteTo(encoder.Writer()); err != nil {
             return
         }
 `)
@@ -649,6 +649,7 @@ for k` + vc + `, v` + vc + ` := range ` + gen.genVariableName(prefix, mb.Key) + 
 	gen.writeString("}\n")
 }
 
+// 保存文件
 func (gen *Generate) saveFiles() {
 	log.Debugf(gen.code.String())
 
@@ -670,6 +671,7 @@ func (gen *Generate) saveFiles() {
 	}
 }
 
+// 生成变量名
 func (gen *Generate) genVariableName(prefix, name string) string {
 	if prefix != "" {
 		return prefix + name
@@ -678,6 +680,7 @@ func (gen *Generate) genVariableName(prefix, name string) string {
 	}
 }
 
+// 生成对应的类型字符串
 func (gen *Generate) genType(ty *VarType) string {
 	ret := ""
 
@@ -736,6 +739,7 @@ func (gen *Generate) genType(ty *VarType) string {
 	return ret
 }
 
+// 首字母大写
 func upperFirstLetter(s string) string {
 	if len(s) == 0 {
 		return ""
