@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/edte/jce2go/log"
+	"github.com/erpc-go/jce2go/log"
 )
 
 // 全局 map 避免重复生成

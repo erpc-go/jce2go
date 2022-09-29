@@ -4,7 +4,7 @@ import (
 	"flag"
 	"path"
 
-	"github.com/edte/jce2go/log"
+	"github.com/erpc-go/jce2go/log"
 )
 
 var (

@@ -1,4 +1,4 @@
-module github.com/edte/jce2go
+module github.com/erpc-go/jce2go
 
 go 1.19
 
