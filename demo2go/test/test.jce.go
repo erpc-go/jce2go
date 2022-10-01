@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"io"
 
-    "github.com/erpc-go/jce-codec"
+	"github.com/erpc-go/jce-codec"
 	"github.com/erpc-go/jce2go/demo2go/base"
 )
 
 // 占位使用，避免导入的这些包没有被使用
 var _ = fmt.Errorf
 var _ = io.ReadFull
-var _ = jce.BYTE
+var _ = jce.INT1
 
 // RequestPacket struct implement
 type RequestPacket struct {
@@ -35,6 +35,7 @@ type RequestPacket struct {
 	Arr4    []map[int32]string      `json:"arr4" tag:"15"`
 	Arr3    []base.Request          `json:"arr3" tag:"16"`
 	M2      map[string]base.Request `json:"m2" tag:"17"`
+	Req     base.Request            `json:"req" tag:"18"`
 }
 
 func (st *RequestPacket) resetDefault() {
@@ -50,6 +51,10 @@ func (st *RequestPacket) ReadFrom(r io.Reader) (n int64, err error) {
 
 	decoder := jce.NewDecoder(r)
 	st.resetDefault()
+
+	if err = decoder.ReadStructBegin(); err != nil {
+		return
+	}
 
 	// [step 1] read B
 	if err = decoder.ReadInt8(&st.B, 1, true); err != nil {
@@ -268,6 +273,14 @@ func (st *RequestPacket) ReadFrom(r io.Reader) (n int64, err error) {
 
 		st.M2[k9] = v9
 	}
+	// [step 18] read Req
+	if _, err = st.Req.ReadFrom(decoder.Reader()); err != nil {
+		return
+	}
+
+	if err = decoder.ReadStructEnd(); err != nil {
+		return
+	}
 
 	_ = err
 	_ = have
@@ -279,6 +292,10 @@ func (st *RequestPacket) ReadFrom(r io.Reader) (n int64, err error) {
 func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	encoder := jce.NewEncoder(w)
 	st.resetDefault()
+
+	if err = encoder.WriteStructBegin(); err != nil {
+		return
+	}
 
 	// [step 1] write B
 	if err = encoder.WriteInt8(st.B, 1); err != nil {
@@ -455,6 +472,14 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 		if _, err = v19.WriteTo(encoder.Writer()); err != nil {
 			return
 		}
+	}
+	// [step 18] write Req
+	if _, err = st.Req.WriteTo(encoder.Writer()); err != nil {
+		return
+	}
+
+	if err = encoder.WriteStructEnd(); err != nil {
+		return
 	}
 
 	// flush to io.Writer

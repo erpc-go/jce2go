@@ -41,7 +41,6 @@ const (
 	tkUnsigned
 	tkVoid
 	tkOut
-	tkKey
 	tkTrue
 	tkFalse
 	tkDummyKeywordEnd
@@ -96,7 +95,6 @@ var TokenMap = [...]string{
 	tkUnsigned:  "unsigned",
 	tkVoid:      "void",
 	tkOut:       "out",
-	tkKey:       "key",
 	tkTrue:      "true",
 	tkFalse:     "false",
 

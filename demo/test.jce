@@ -20,5 +20,6 @@ module test {
         15 require  vector<map<int,string>>      arr4;
         16 require  vector<base::request>        arr3;
         17 require  map<string, base::request>   m2;
+        18 require  base::request                 req;
     };
 };

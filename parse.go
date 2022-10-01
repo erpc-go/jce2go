@@ -126,7 +126,7 @@ func (st *StructInfo) rename() {
 type EnumMember struct {
 	Key   string
 	Type  int
-	Value int32  //type 0  // TODO: 这个 type 是啥？name 又是啥？
+	Value int32  //type 0
 	Name  string //type 1
 }
 
@@ -154,12 +154,6 @@ type ConstInfo struct {
 
 func (cst *ConstInfo) rename() {
 	cst.Name = upperFirstLetter(cst.Name)
-}
-
-// HashKeyInfo record hash key information.
-type HashKeyInfo struct {
-	Name   string
-	Member []string
 }
 
 func (p *Parse) parseErr(err string) {
@@ -467,28 +461,6 @@ func (p *Parse) parseConst() {
 	p.Consts = append(p.Consts, m)
 }
 
-func (p *Parse) parseHashKey() {
-	hashKey := HashKeyInfo{}
-	p.expect(tkSquareLeft)
-	p.expect(tkName)
-	hashKey.Name = p.t.S.S
-	p.expect(tkComma)
-	for {
-		p.expect(tkName)
-		hashKey.Member = append(hashKey.Member, p.t.S.S)
-		p.next()
-		t := p.t
-		switch t.T {
-		case tkSquarerRight:
-			p.expect(tkSemi)
-			return
-		case tkComma:
-		default:
-			p.parseErr("expect ] or ,")
-		}
-	}
-}
-
 func (p *Parse) parseModuleSegment() {
 	p.expect(tkBraceLeft)
 
@@ -505,8 +477,6 @@ func (p *Parse) parseModuleSegment() {
 			p.parseEnum()
 		case tkStruct:
 			p.parseStruct()
-		case tkKey:
-			p.parseHashKey()
 		default:
 			p.parseErr("not except " + TokenMap[t.T])
 		}
@@ -685,11 +655,6 @@ func (p *Parse) analyzeDefault() {
 	}
 }
 
-// TODO analysis key[]，have quoted the correct struct and member name.
-func (p *Parse) analyzeHashKey() {
-
-}
-
 func (p *Parse) analyzeDepend() {
 	for _, v := range p.Includes {
 		relativePath := path.Dir(p.Source)
@@ -700,7 +665,6 @@ func (p *Parse) analyzeDepend() {
 
 	p.analyzeDefault()
 	p.analyzeTName()
-	p.analyzeHashKey()
 }
 
 func path2ProtoName(path string) string {

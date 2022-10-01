@@ -133,7 +133,7 @@ import (
 // 占位使用，避免导入的这些包没有被使用
 var _ = fmt.Errorf
 var _ = io.ReadFull
-var _ = jce.BYTE
+var _ = jce.INT1
 
 `)
 
@@ -303,9 +303,6 @@ func (gen *Generate) genFunResetDefault(st *StructInfo) {
 	gen.writeString("\nfunc (st *" + st.Name + ") resetDefault() {\n")
 
 	for _, v := range st.Member {
-		if v.Type.CType == tkStruct {
-			gen.writeString("st." + v.Key + ".resetDefault()\n")
-		}
 		if v.Default == "" {
 			continue
 		}
@@ -326,6 +323,10 @@ func (st *` + st.Name + `) ReadFrom(r io.Reader) (n int64, err error) {
 
     decoder := jce.NewDecoder(r)
 	st.resetDefault()
+    
+    if err = decoder.ReadStructBegin(); err != nil {
+        return
+    }
 
 `)
 
@@ -334,6 +335,10 @@ func (st *` + st.Name + `) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	gen.code.WriteString(`
+    if err = decoder.ReadStructEnd(); err != nil {
+        return
+    }
+
 	_ = err
 	_ = have
 	_ = ty
@@ -358,7 +363,7 @@ func (gen *Generate) genReadVar(v *StructMember, prefix string) {
 		gen.genReadVector(v, prefix)
 	case tkTMap:
 		gen.genReadMap(v, prefix)
-	case tkName: //TODO: 这是啥？
+	case tkName:
 		if v.Type.CType == tkEnum {
 			require := "false"
 			if v.Require {
@@ -507,6 +512,10 @@ func (st *` + st.Name + `) WriteTo(w io.Writer) (n int64, err error) {
     encoder := jce.NewEncoder(w)
 	st.resetDefault()
 
+    if err = encoder.WriteStructBegin(); err != nil {
+        return
+    }  
+
 `)
 
 	for _, v := range st.Member {
@@ -514,7 +523,11 @@ func (st *` + st.Name + `) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	gen.writeString(`
-// flush to io.Writer        
+    if err = encoder.WriteStructEnd(); err != nil {
+        return
+    }
+
+    // flush to io.Writer        
     err = encoder.Flush()
     return
 }
@@ -532,7 +545,7 @@ func (gen *Generate) genWriteVar(v *StructMember, prefix string, hasRet bool) {
 		gen.genWriteVector(v, prefix, hasRet)
 	case tkTMap:
 		gen.genWriteMap(v, prefix, hasRet)
-	case tkName: // TODO: ?
+	case tkName:
 		if v.Type.CType == tkEnum {
 			gen.writeString(`
             if err = encoder.WriteInt32(int32(` + gen.genVariableName(prefix, v.Key) + `),` + strconv.Itoa(int(v.Tag)) + `); err !=nil {
@@ -617,6 +630,13 @@ if err = encoder.WriteLength(uint32(len(` + gen.genVariableName(prefix, mb.Key) 
 func (gen *Generate) genWriteMap(mb *StructMember, prefix string, hasRet bool) {
 	vc := strconv.Itoa(gen.vc)
 	gen.vc++
+
+	// map
+	// --------------------------------------------------------------
+	// | head(type、tag) |   length  |     data (key、value list)   |
+	// |    1 or 2 B     |     4B    |           ?                  |
+	// --------------------------------------------------------------
+	// data 可以是任何 type
 
 	gen.writeString(`
 // [step ` + strconv.Itoa(int(mb.Tag)) + `.1] write type、tag

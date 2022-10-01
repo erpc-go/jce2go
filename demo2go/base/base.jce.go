@@ -13,7 +13,7 @@ import (
 // 占位使用，避免导入的这些包没有被使用
 var _ = fmt.Errorf
 var _ = io.ReadFull
-var _ = jce.BYTE
+var _ = jce.INT1
 
 // enum Code implement
 type Code int32
@@ -47,8 +47,16 @@ func (st *Request) ReadFrom(r io.Reader) (n int64, err error) {
 	decoder := jce.NewDecoder(r)
 	st.resetDefault()
 
+	if err = decoder.ReadStructBegin(); err != nil {
+		return
+	}
+
 	// [step 1] read B
 	if err = decoder.ReadInt8(&st.B, 1, true); err != nil {
+		return
+	}
+
+	if err = decoder.ReadStructEnd(); err != nil {
 		return
 	}
 
@@ -63,8 +71,16 @@ func (st *Request) WriteTo(w io.Writer) (n int64, err error) {
 	encoder := jce.NewEncoder(w)
 	st.resetDefault()
 
+	if err = encoder.WriteStructBegin(); err != nil {
+		return
+	}
+
 	// [step 1] write B
 	if err = encoder.WriteInt8(st.B, 1); err != nil {
+		return
+	}
+
+	if err = encoder.WriteStructEnd(); err != nil {
 		return
 	}
 

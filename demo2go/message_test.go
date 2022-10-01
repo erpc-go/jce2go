@@ -1,7 +1,6 @@
 package demo2go
 
 import (
-	"bytes"
 	"fmt"
 	"testing"
 
@@ -48,12 +47,12 @@ func TestMessage(t *testing.T) {
 		},
 	}
 
-	b := bytes.NewBuffer(make([]byte, 0))
-	if err := jce.Marshal(req, b); err != nil {
+	b, err := jce.Marshal(req)
+	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(b.Bytes())
+	fmt.Println(b)
 
 	rsp := &test.RequestPacket{}
 
