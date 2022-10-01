@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/edte/erpc/codec/jce"
+	"github.com/erpc-go/jce-codec"
 )
 
 // 占位使用，避免导入的这些包没有被使用

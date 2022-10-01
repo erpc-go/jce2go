@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/edte/erpc/codec/jce"
-	"github.com/edte/jce2go/demo2go/base"
+    "github.com/erpc-go/jce-codec"
+	"github.com/erpc-go/jce2go/demo2go/base"
 )
 
 // 占位使用，避免导入的这些包没有被使用

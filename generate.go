@@ -49,7 +49,7 @@ func NewGenerate(path string, module string, outdir string) *Generate {
 		vc:       0,
 		filepath: path,
 
-		codecPath: "github.com/edte/erpc/codec/jce",
+		codecPath: "github.com/erpc-go/jce-codec",
 		module:    module,
 		prefix:    outdir,
 		p:         &Parse{},

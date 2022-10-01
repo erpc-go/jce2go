@@ -35,7 +35,7 @@ func main() {
 			continue
 		}
 
-		// log.Debugf("begin parse file, name: %s", filename)
+		log.Debugf("begin parse file, name: %s", filename)
 
 		gen := NewGenerate(filename, modulePath, outdir)
 		gen.Gen()

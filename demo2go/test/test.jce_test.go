@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/edte/jce2go/demo2go/base"
+	"github.com/erpc-go/jce2go/demo2go/base"
 )
 
 func TestRequestPacket(t *testing.T) {
