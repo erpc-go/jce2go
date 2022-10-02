@@ -13,7 +13,7 @@ import (
 // 占位使用，避免导入的这些包没有被使用
 var _ = fmt.Errorf
 var _ = io.ReadFull
-var _ = jce.INT1
+var _ = jce.Int1
 
 // enum Code implement
 type Code int32

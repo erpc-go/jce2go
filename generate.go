@@ -133,7 +133,7 @@ import (
 // 占位使用，避免导入的这些包没有被使用
 var _ = fmt.Errorf
 var _ = io.ReadFull
-var _ = jce.INT1
+var _ = jce.Int1
 
 `)
 
@@ -424,7 +424,7 @@ func (gen *Generate) genReadVector(mb *StructMember, prefix string) {
 		return
 	}
 
-	// LIST
+	// List
 	gen.writeString(`
     var length` + vc + ` uint32
 
@@ -605,7 +605,7 @@ if err = encoder.WriteSliceInt8(` + gen.genVariableName(prefix, mb.Key) + `,` + 
 
 	gen.writeString(`
 // [step ` + strconv.Itoa(int(mb.Tag)) + `.1] write type、tag
-if err = encoder.WriteHead(jce.LIST, ` + strconv.Itoa(int(mb.Tag)) + `); err != nil {
+if err = encoder.WriteHead(jce.List, ` + strconv.Itoa(int(mb.Tag)) + `); err != nil {
     return
 }
 // [step ` + strconv.Itoa(int(mb.Tag)) + `.2] write list length
@@ -640,7 +640,7 @@ func (gen *Generate) genWriteMap(mb *StructMember, prefix string, hasRet bool) {
 
 	gen.writeString(`
 // [step ` + strconv.Itoa(int(mb.Tag)) + `.1] write type、tag
-if err = encoder.WriteHead(jce.MAP, ` + strconv.Itoa(int(mb.Tag)) + `); err != nil {
+if err = encoder.WriteHead(jce.Map, ` + strconv.Itoa(int(mb.Tag)) + `); err != nil {
     return
 }
 // [step ` + strconv.Itoa(int(mb.Tag)) + `.2] write length

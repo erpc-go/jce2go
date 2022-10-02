@@ -14,7 +14,7 @@ import (
 // 占位使用，避免导入的这些包没有被使用
 var _ = fmt.Errorf
 var _ = io.ReadFull
-var _ = jce.INT1
+var _ = jce.Int1
 
 // RequestPacket struct implement
 type RequestPacket struct {
@@ -343,7 +343,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	// [step 12] write Arr1
 	// [step 12.1] write type、tag
-	if err = encoder.WriteHead(jce.LIST, 12); err != nil {
+	if err = encoder.WriteHead(jce.List, 12); err != nil {
 		return
 	}
 	// [step 12.2] write list length
@@ -359,7 +359,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	// [step 13] write Arr2
 	// [step 13.1] write type、tag
-	if err = encoder.WriteHead(jce.LIST, 13); err != nil {
+	if err = encoder.WriteHead(jce.List, 13); err != nil {
 		return
 	}
 	// [step 13.2] write list length
@@ -370,7 +370,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	for _, v13 := range st.Arr2 {
 		// [step 0] write v13
 		// [step 0.1] write type、tag
-		if err = encoder.WriteHead(jce.LIST, 0); err != nil {
+		if err = encoder.WriteHead(jce.List, 0); err != nil {
 			return
 		}
 		// [step 0.2] write list length
@@ -387,7 +387,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	// [step 14] write M1
 	// [step 14.1] write type、tag
-	if err = encoder.WriteHead(jce.MAP, 14); err != nil {
+	if err = encoder.WriteHead(jce.Map, 14); err != nil {
 		return
 	}
 	// [step 14.2] write length
@@ -407,7 +407,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	// [step 15] write Arr4
 	// [step 15.1] write type、tag
-	if err = encoder.WriteHead(jce.LIST, 15); err != nil {
+	if err = encoder.WriteHead(jce.List, 15); err != nil {
 		return
 	}
 	// [step 15.2] write list length
@@ -418,7 +418,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	for _, v16 := range st.Arr4 {
 		// [step 0] write v16
 		// [step 0.1] write type、tag
-		if err = encoder.WriteHead(jce.MAP, 0); err != nil {
+		if err = encoder.WriteHead(jce.Map, 0); err != nil {
 			return
 		}
 		// [step 0.2] write length
@@ -439,7 +439,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	// [step 16] write Arr3
 	// [step 16.1] write type、tag
-	if err = encoder.WriteHead(jce.LIST, 16); err != nil {
+	if err = encoder.WriteHead(jce.List, 16); err != nil {
 		return
 	}
 	// [step 16.2] write list length
@@ -455,7 +455,7 @@ func (st *RequestPacket) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	// [step 17] write M2
 	// [step 17.1] write type、tag
-	if err = encoder.WriteHead(jce.MAP, 17); err != nil {
+	if err = encoder.WriteHead(jce.Map, 17); err != nil {
 		return
 	}
 	// [step 17.2] write length
