@@ -1,18 +1,12 @@
 module base
-{
-    enum Code
-    {
-        Success = 0,
-        Error = 1
-    };   
- 
-    const short ERPC_VERSION   = 0x01;
-    const int   TUP_VERSION    = 0x03;
+{ 
+    const short ERPC_VERSION   = 0x01; // hhhh
+    const int   TUP_VERSION    = 0x03; // lll 
+    const string   jj    = "tet";  // owd
 
-    // test
-    struct request
+    enum EMsgSendType
     {
-
-        1  require byte   b;  // hhhhhh
+        eSendTypeOnline         = 1,    
+        eSendTypeOffline        = 2,   
     };
 };

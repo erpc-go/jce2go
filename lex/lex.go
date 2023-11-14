@@ -14,6 +14,8 @@ type LexState struct {
 
 	tokenBuff bytes.Buffer // 存储标记的缓冲区
 
+	peekedToken *Token
+
 	filename string        // 处理的文件名
 	source   *bytes.Buffer // 存储输入源代码的缓冲区
 }
@@ -34,10 +36,24 @@ func NewLexState(filename string, source []byte) *LexState {
 // llex 方法返回一个 TK 值和一个指向 SemInfo 结构的指针，这两个值分别被赋给 tk.T 和 tk.S。然后，将当前行号赋给 tk.Line。
 // 最后，NextToken 方法返回指向填充的 Token 结构的指针。这个方法可以在词法分析过程中多次调用，以依次获取源代码中的所有标记。
 func (ls *LexState) NextToken() *Token {
+	if ls.peekedToken != nil {
+		tk := ls.peekedToken
+		ls.peekedToken = nil
+		return tk
+	}
+
 	tk := &Token{}
 	tk.Type, tk.Value = ls.llex()
 	tk.Line = ls.lineNumber
 	return tk
+}
+
+// 该方法返回下一个 token，而不实际前进到下一个 token
+func (ls *LexState) PeekToken() *Token {
+	if ls.peekedToken == nil {
+		ls.peekedToken = ls.NextToken()
+	}
+	return ls.peekedToken
 }
 
 // lexErr 方法接受一个错误字符串作为参数，然后将其与当前行号和源代码文件名组合，
@@ -79,20 +95,20 @@ func (ls *LexState) readNumber() (TokenType, *TokenValue) {
 		ls.tokenBuff.WriteByte(ls.current)
 		ls.next()
 	}
-	sem.S = ls.tokenBuff.String()
+	sem.String = ls.tokenBuff.String()
 	if hasDot {
-		f, err := strconv.ParseFloat(sem.S, 64)
+		f, err := strconv.ParseFloat(sem.String, 64)
 		if err != nil {
 			ls.lexErr(err.Error())
 		}
-		sem.F = f
+		sem.Float = f
 		return TkFloat, sem
 	}
-	i, err := strconv.ParseInt(sem.S, 0, 64)
+	i, err := strconv.ParseInt(sem.String, 0, 64)
 	if err != nil {
 		ls.lexErr(err.Error())
 	}
-	sem.I = i
+	sem.Int = i
 	return TkInteger, sem
 }
 
@@ -117,23 +133,23 @@ func (ls *LexState) readIdent() (TokenType, *TokenValue) {
 		ls.tokenBuff.WriteByte(ls.current)
 		ls.next()
 	}
-	sem.S = ls.tokenBuff.String()
-	if strings.Count(sem.S, ":") > 0 {
-		if strings.Count(sem.S, "::") == 2 && strings.Count(sem.S, ":") == 4 {
-			sem.S = sem.S[strings.Index(sem.S, "::")+2:]
+	sem.String = ls.tokenBuff.String()
+	if strings.Count(sem.String, ":") > 0 {
+		if strings.Count(sem.String, "::") == 2 && strings.Count(sem.String, ":") == 4 {
+			sem.String = sem.String[strings.Index(sem.String, "::")+2:]
 		}
-		if strings.Count(sem.S, "::") != 1 || strings.Count(sem.S, ":") != 2 {
+		if strings.Count(sem.String, "::") != 1 || strings.Count(sem.String, ":") != 2 {
 			ls.lexErr("namespace qualifier::is illegal")
 		}
 	}
 
 	for i := TkDummyKeywordBegin + 1; i < TkDummyKeywordEnd; i++ {
-		if TokenMap[i] == sem.S {
+		if TokenMap[i] == sem.String {
 			return i, nil
 		}
 	}
 	for i := TkDummyTypeBegin + 1; i < TkDummyTypeEnd; i++ {
-		if TokenMap[i] == sem.S {
+		if TokenMap[i] == sem.String {
 			return i, nil
 		}
 	}
@@ -174,7 +190,7 @@ func (ls *LexState) readString() (TokenType, *TokenValue) {
 			ls.next()
 		}
 	}
-	sem.S = ls.tokenBuff.String()
+	sem.String = ls.tokenBuff.String()
 
 	return TkString, sem
 }
@@ -196,7 +212,7 @@ func (ls *LexState) readComment() (TokenType, *TokenValue) {
 	} else {
 		ls.lexErr("lexical error，/")
 	}
-	comment.S = ls.tokenBuff.String()
+	comment.String = ls.tokenBuff.String()
 	return TkComment, comment
 }
 

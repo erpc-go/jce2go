@@ -15,9 +15,9 @@ type TokenType byte
 // TokenValue 结构用于存储与词法分析器相关的语义信息，例如整数、浮点数和字符串值。
 // TokenValue is struct.
 type TokenValue struct {
-	I int64
-	F float64
-	S string
+	Int    int64
+	Float  float64
+	String string
 }
 
 // EOS is byte stream terminator
@@ -26,21 +26,21 @@ const EOS = 0
 // 代码中的 const 部分定义了一系列 TK 类型的常量，它们表示各种可能的标记。这些常量被分为几个部分，例如关键字、类型和值。
 const (
 	TkEos          TokenType = iota
-	TkBraceLeft              //({)
-	TkBraceRight             //}
-	TkSemi                   //;
-	TkEq                     //=
-	TkShl                    //<
-	TkShr                    //>
-	TkComma                  //,
-	TkPtl                    //(
-	TkPtr                    //)
-	TkSquareLeft             //[
-	TkSquarerRight           //]
-	TkInclude                //#include
+	TkBraceLeft              // {
+	TkBraceRight             // }
+	TkSemi                   // ;
+	TkEq                     // =
+	TkShl                    // <
+	TkShr                    // >
+	TkComma                  // ,
+	TkPtl                    // (
+	TkPtr                    // )
+	TkSquareLeft             // [
+	TkSquarerRight           // ]
+	TkInclude                // #include
 
-	TkDummyKeywordBegin
 	// keyword
+	TkDummyKeywordBegin
 	TkModule
 	TkEnum
 	TkStruct

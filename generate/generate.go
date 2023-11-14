@@ -105,7 +105,7 @@ func (gen *Generate) genAll() {
 // 先生成依赖的其他文件，即 include 的其他文件
 func (gen *Generate) genIncludeFiles() {
 	for _, v := range gen.p.IncParse {
-		NewGenerate(v.Source, gen.module, gen.prefix, gen.jsonOmitEmpty).genAll()
+		NewGenerate(v.Filepath, gen.module, gen.prefix, gen.jsonOmitEmpty).genAll()
 	}
 }
 
@@ -261,7 +261,7 @@ func (gen *Generate) genConst() {
 
 	for _, v := range gen.p.Consts {
 		v.Rename()
-		gen.writeString(v.Name + " " + gen.genType(v.Type) + " = " + v.Value + "\n")
+		gen.writeString(v.Name + " " + gen.genType(v.Type) + " = " + v.Value + v.Comment + "\n")
 	}
 
 	gen.writeString(")\n")
