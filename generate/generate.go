@@ -14,7 +14,7 @@ import (
 
 	"github.com/erpc-go/jce2go/lex"
 	"github.com/erpc-go/jce2go/log"
-	"github.com/erpc-go/jce2go/parse"
+	"github.com/erpc-go/jce2go/parser"
 	"github.com/erpc-go/jce2go/utils"
 	"github.com/erpc-go/jce2go/version"
 )
@@ -27,14 +27,14 @@ var (
 // Generate record go code information.
 // 代码生成
 type Generate struct {
-	I             []string     // imports with path
-	code          bytes.Buffer // 最终生成的代码
-	vc            int          // var count. Used to generate unique variable names
-	filepath      string       // 当前解析的 jce 文件
-	codecPath     string       // 生成后的代码依赖的基础 codec 代码
-	module        string       // 包名
-	prefix        string       // 最终的生成目录
-	p             *parse.Parse // 当前文件生成的语法分析树
+	I             []string       // imports with path
+	code          bytes.Buffer   // 最终生成的代码
+	vc            int            // var count. Used to generate unique variable names
+	filepath      string         // 当前解析的 jce 文件
+	codecPath     string         // 生成后的代码依赖的基础 codec 代码
+	module        string         // 包名
+	prefix        string         // 最终的生成目录
+	p             *parser.Parser // 当前文件生成的语法分析树
 	jsonOmitEmpty bool
 }
 
@@ -57,12 +57,12 @@ func NewGenerate(path string, module string, outdir string, jsonOmitEmpty bool) 
 		codecPath:     "github.com/erpc-go/jce-codec",
 		module:        module,
 		prefix:        outdir,
-		p:             &parse.Parse{},
+		p:             &parser.Parser{},
 		jsonOmitEmpty: jsonOmitEmpty,
 	}
 }
 
-// Gen to parse file.
+// Gen to parser file.
 func (gen *Generate) Gen() {
 	// recover  panic
 	defer func() {
@@ -73,7 +73,7 @@ func (gen *Generate) Gen() {
 	}()
 
 	// 解析文件
-	gen.p = parse.ParseFile(gen.filepath, make([]string, 0))
+	gen.p = parser.ParseFile(gen.filepath, make([]string, 0))
 
 	b, _ := json.Marshal(gen.p)
 	log.Debugf(string(b))
@@ -192,7 +192,7 @@ func (gen *Generate) genEnums() {
 	}
 }
 
-func (gen *Generate) genEnum(en *parse.EnumInfo) {
+func (gen *Generate) genEnum(en *parser.EnumInfo) {
 	if len(en.Member) == 0 {
 		return
 	}
@@ -246,7 +246,7 @@ func (gen *Generate) genEnum(en *parse.EnumInfo) {
 
 // typeName + constName
 // 首字母大写
-func (gen *Generate) makeEnumName(en *parse.EnumInfo, mb *parse.EnumMember) string {
+func (gen *Generate) makeEnumName(en *parser.EnumInfo, mb *parser.EnumMember) string {
 	return utils.UpperFirstLetter(en.Name) + utils.UpperFirstLetter(mb.Key)
 }
 
@@ -274,7 +274,7 @@ func (gen *Generate) genStructs() {
 	}
 }
 
-func (gen *Generate) genStruct(st *parse.StructInfo) {
+func (gen *Generate) genStruct(st *parser.StructInfo) {
 	gen.vc = 0
 	st.Rename()
 
@@ -287,7 +287,7 @@ func (gen *Generate) genStruct(st *parse.StructInfo) {
 
 // 生成 struct 的定义
 // 默认生成 json、tag
-func (gen *Generate) genStructDefine(st *parse.StructInfo) {
+func (gen *Generate) genStructDefine(st *parser.StructInfo) {
 	gen.writeString("// " + st.Name + " struct implement\n")
 	gen.writeString("type " + st.Name + " struct {\n")
 
@@ -304,7 +304,7 @@ func (gen *Generate) genStructDefine(st *parse.StructInfo) {
 }
 
 // 生成 struct optional 成员的默认赋值
-func (gen *Generate) genFunResetDefault(st *parse.StructInfo) {
+func (gen *Generate) genFunResetDefault(st *parser.StructInfo) {
 	gen.writeString("\nfunc (st *" + st.Name + ") resetDefault() {\n")
 
 	for _, v := range st.Member {
@@ -318,7 +318,7 @@ func (gen *Generate) genFunResetDefault(st *parse.StructInfo) {
 }
 
 // 实现反序列化
-func (gen *Generate) genFunReadFrom(st *parse.StructInfo) {
+func (gen *Generate) genFunReadFrom(st *parser.StructInfo) {
 	gen.writeString("\n" + `// ReadFrom reads from io.Reader and put into struct.
 func (st *` + st.Name + `) ReadFrom(r io.Reader) (n int64, err error) {
 	var (
@@ -353,7 +353,7 @@ func (st *` + st.Name + `) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 // 生成 struct 的成员
-func (gen *Generate) genReadVar(v *parse.StructMember, prefix string) {
+func (gen *Generate) genReadVar(v *parser.StructMember, prefix string) {
 	gen.writeString("    // [step " + strconv.Itoa(int(v.Tag)) + "] read " + v.Key)
 
 	require := "false"
@@ -400,7 +400,7 @@ func (gen *Generate) genReadVar(v *parse.StructMember, prefix string) {
 }
 
 // 序列化 vector
-func (gen *Generate) genReadVector(mb *parse.StructMember, prefix string) {
+func (gen *Generate) genReadVector(mb *parser.StructMember, prefix string) {
 	tag := strconv.Itoa(int(mb.Tag))
 	vc := strconv.Itoa(gen.vc)
 	gen.vc++
@@ -448,7 +448,7 @@ func (gen *Generate) genReadVector(mb *parse.StructMember, prefix string) {
     for i` + vc + `:= uint32(0); i` + vc + `< length` + vc + `; i` + vc + `++ {
 `)
 
-	dummy := &parse.StructMember{
+	dummy := &parser.StructMember{
 		Type: mb.Type.TypeK,
 		Key:  mb.Key + "[i" + vc + "]",
 	}
@@ -461,7 +461,7 @@ func (gen *Generate) genReadVector(mb *parse.StructMember, prefix string) {
 }
 
 // 反序列化 map
-func (gen *Generate) genReadMap(mb *parse.StructMember, prefix string) {
+func (gen *Generate) genReadMap(mb *parser.StructMember, prefix string) {
 	require := "false"
 	if mb.Require {
 		require = "true"
@@ -487,13 +487,13 @@ func (gen *Generate) genReadMap(mb *parse.StructMember, prefix string) {
     for i := uint32(0);i < length` + vc + `; i++ {
 `)
 
-	dummy := &parse.StructMember{
+	dummy := &parser.StructMember{
 		Type: mb.Type.TypeK,
 		Key:  "k" + vc,
 	}
 	gen.genReadVar(dummy, "")
 
-	dummy = &parse.StructMember{
+	dummy = &parser.StructMember{
 		Type: mb.Type.TypeV,
 		Key:  "v" + vc,
 		Tag:  1,
@@ -511,7 +511,7 @@ func (gen *Generate) genReadMap(mb *parse.StructMember, prefix string) {
 // 1. 写：优点方便维护，缺点增大带宽
 // 2. 不写：优点节约带宽，缺点维护不方便
 // 最后综合考虑，其实带宽开销并不大，而维护更加重要，故默认写
-func (gen *Generate) genFunWriteTo(st *parse.StructInfo) {
+func (gen *Generate) genFunWriteTo(st *parser.StructInfo) {
 	gen.writeString(`// WriteTo encode struct to io.Writer 
 func (st *` + st.Name + `) WriteTo(w io.Writer) (n int64, err error) {
     encoder := jce.NewEncoder(w)
@@ -540,7 +540,7 @@ func (st *` + st.Name + `) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 // 序列化 struct 成员
-func (gen *Generate) genWriteVar(v *parse.StructMember, prefix string, hasRet bool) {
+func (gen *Generate) genWriteVar(v *parser.StructMember, prefix string, hasRet bool) {
 	gen.writeString("// [step " + strconv.Itoa(int(v.Tag)) + "] write " + v.Key)
 
 	switch v.Type.Type {
@@ -576,7 +576,7 @@ if err = encoder.Write` + utils.UpperFirstLetter(gen.genType(v.Type)) + `(` + ge
 }
 
 // 序列化数组
-func (gen *Generate) genWriteVector(mb *parse.StructMember, prefix string, hasRet bool) {
+func (gen *Generate) genWriteVector(mb *parser.StructMember, prefix string, hasRet bool) {
 	vc := strconv.Itoa(gen.vc)
 	gen.vc++
 
@@ -621,7 +621,7 @@ if err = encoder.WriteLength(uint32(len(` + gen.genVariableName(prefix, mb.Key) 
     for _, v` + vc + ` := range ` + gen.genVariableName(prefix, mb.Key) + ` {
 `)
 
-	dummy := &parse.StructMember{
+	dummy := &parser.StructMember{
 		Type: mb.Type.TypeK,
 		Key:  "v" + vc,
 	}
@@ -632,7 +632,7 @@ if err = encoder.WriteLength(uint32(len(` + gen.genVariableName(prefix, mb.Key) 
 }
 
 // 序列化 map
-func (gen *Generate) genWriteMap(mb *parse.StructMember, prefix string, hasRet bool) {
+func (gen *Generate) genWriteMap(mb *parser.StructMember, prefix string, hasRet bool) {
 	vc := strconv.Itoa(gen.vc)
 	gen.vc++
 
@@ -657,14 +657,14 @@ for k` + vc + `, v` + vc + ` := range ` + gen.genVariableName(prefix, mb.Key) + 
 `)
 
 	// write key
-	dummy := &parse.StructMember{
+	dummy := &parser.StructMember{
 		Type: mb.Type.TypeK,
 		Key:  "k" + vc,
 	}
 	gen.genWriteVar(dummy, "", hasRet)
 
 	// write value
-	dummy = &parse.StructMember{
+	dummy = &parser.StructMember{
 		Type: mb.Type.TypeV,
 		Key:  "v" + vc,
 		Tag:  1,
@@ -707,7 +707,7 @@ func (gen *Generate) genVariableName(prefix, name string) string {
 }
 
 // 生成对应的类型字符串
-func (gen *Generate) genType(ty *parse.VarType) string {
+func (gen *Generate) genType(ty *parser.VarType) string {
 	ret := ""
 
 	switch ty.Type {

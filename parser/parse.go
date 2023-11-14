@@ -1,4 +1,4 @@
-package parse
+package parser
 
 import (
 	"io/ioutil"
@@ -12,8 +12,8 @@ import (
 )
 
 // 语法分析器
-// Parse record information of parse file.
-type Parse struct {
+// Parser record information of parse file.
+type Parser struct {
 	Source string // 源文件
 
 	Module   string   // 包名
@@ -24,7 +24,7 @@ type Parse struct {
 	Consts  []ConstInfo  // const list
 
 	// have parsed include file
-	IncParse []*Parse
+	IncParse []*Parser
 
 	lex   *lex.LexState
 	t     *lex.Token
@@ -39,8 +39,8 @@ type Parse struct {
 	fileNames map[string]bool
 }
 
-func newParse(s string, b []byte, incChain []string) *Parse {
-	p := &Parse{
+func newParse(s string, b []byte, incChain []string) *Parser {
+	p := &Parser{
 		Source:    s,
 		ProtoName: path2ProtoName(s),
 	}
@@ -59,7 +59,7 @@ func newParse(s string, b []byte, incChain []string) *Parse {
 	return p
 }
 
-func (p *Parse) parse() {
+func (p *Parser) parse() {
 OUT:
 	for {
 		p.next()
@@ -160,7 +160,7 @@ func (cst *ConstInfo) Rename() {
 	cst.Name = utils.UpperFirstLetter(cst.Name)
 }
 
-func (p *Parse) parseErr(err string) {
+func (p *Parser) parseErr(err string) {
 	line := "0"
 	if p.t != nil {
 		line = strconv.Itoa(p.t.Line)
@@ -169,19 +169,19 @@ func (p *Parse) parseErr(err string) {
 	panic(p.Source + ": " + line + ". " + err)
 }
 
-func (p *Parse) next() {
+func (p *Parser) next() {
 	p.lastT = p.t
 	p.t = p.lex.NextToken()
 }
 
-func (p *Parse) expect(t lex.TokenType) {
+func (p *Parser) expect(t lex.TokenType) {
 	p.next()
 	if p.t.Type != t {
 		p.parseErr("expect " + lex.TokenMap[t])
 	}
 }
 
-func (p *Parse) makeUnsigned(utype *VarType) {
+func (p *Parser) makeUnsigned(utype *VarType) {
 	switch utype.Type {
 	case lex.TkTInt, lex.TkTShort, lex.TkTByte:
 		utype.Unsigned = true
@@ -190,7 +190,7 @@ func (p *Parse) makeUnsigned(utype *VarType) {
 	}
 }
 
-func (p *Parse) parseType() *VarType {
+func (p *Parser) parseType() *VarType {
 	vtype := &VarType{Type: p.t.Type}
 
 	switch vtype.Type {
@@ -222,7 +222,7 @@ func (p *Parse) parseType() *VarType {
 	return vtype
 }
 
-func (p *Parse) parseEnum() {
+func (p *Parser) parseEnum() {
 	enum := EnumInfo{}
 	p.expect(lex.TkName)
 	enum.Name = p.t.Value.S
@@ -276,7 +276,7 @@ LFOR:
 	p.Enums = append(p.Enums, enum)
 }
 
-func (p *Parse) parseStructMemberDefault(m *StructMember) {
+func (p *Parser) parseStructMemberDefault(m *StructMember) {
 	m.DefType = p.t.Type
 	switch p.t.Type {
 	case lex.TkInteger:
@@ -312,7 +312,7 @@ func (p *Parse) parseStructMemberDefault(m *StructMember) {
 	}
 }
 
-func (p *Parse) parseStructMember() *StructMember {
+func (p *Parser) parseStructMember() *StructMember {
 	// tag or end
 	p.next()
 	if p.t.Type == lex.TkBraceRight {
@@ -372,7 +372,7 @@ func (p *Parse) parseStructMember() *StructMember {
 	return m
 }
 
-func (p *Parse) checkTag(st *StructInfo) {
+func (p *Parser) checkTag(st *StructInfo) {
 	set := make(map[int32]bool)
 
 	for _, v := range st.Member {
@@ -383,11 +383,11 @@ func (p *Parse) checkTag(st *StructInfo) {
 	}
 }
 
-func (p *Parse) sortTag(st *StructInfo) {
+func (p *Parser) sortTag(st *StructInfo) {
 	sort.Sort(StructMemberSorter(st.Member))
 }
 
-func (p *Parse) parseStruct() {
+func (p *Parser) parseStruct() {
 	st := StructInfo{}
 	p.expect(lex.TkName)
 	st.Name = p.t.Value.S
@@ -413,7 +413,7 @@ func (p *Parse) parseStruct() {
 	p.Structs = append(p.Structs, st)
 }
 
-func (p *Parse) parseConst() {
+func (p *Parser) parseConst() {
 	m := ConstInfo{}
 
 	// type
@@ -465,7 +465,7 @@ func (p *Parse) parseConst() {
 	p.Consts = append(p.Consts, m)
 }
 
-func (p *Parse) parseModuleSegment() {
+func (p *Parser) parseModuleSegment() {
 	p.expect(lex.TkBraceLeft)
 
 	for {
@@ -487,7 +487,7 @@ func (p *Parse) parseModuleSegment() {
 	}
 }
 
-func (p *Parse) parseModule() {
+func (p *Parser) parseModule() {
 	p.expect(lex.TkName)
 
 	if p.Module != "" {
@@ -525,13 +525,13 @@ func (p *Parse) parseModule() {
 	}
 }
 
-func (p *Parse) parseInclude() {
+func (p *Parser) parseInclude() {
 	p.expect(lex.TkString)
 	p.Includes = append(p.Includes, p.t.Value.S)
 }
 
 // Looking for the true type of user-defined identifier
-func (p *Parse) findTNameType(tname string) (lex.TokenType, string, string) {
+func (p *Parser) findTNameType(tname string) (lex.TokenType, string, string) {
 	for _, v := range p.Structs {
 		if p.Module+"::"+v.Name == tname {
 			return lex.TkStruct, p.Module, p.ProtoName
@@ -554,7 +554,7 @@ func (p *Parse) findTNameType(tname string) (lex.TokenType, string, string) {
 	return lex.TkName, p.Module, p.ProtoName
 }
 
-func (p *Parse) findEnumName(ename string) (*EnumMember, *EnumInfo) {
+func (p *Parser) findEnumName(ename string) (*EnumMember, *EnumInfo) {
 	if strings.Contains(ename, "::") {
 		vec := strings.Split(ename, "::")
 		if len(vec) >= 2 {
@@ -597,7 +597,7 @@ func addToSet(m *map[string]bool, module string) {
 	(*m)[module] = true
 }
 
-func (p *Parse) checkDepTName(ty *VarType, dm *map[string]bool, dmj *map[string]string) {
+func (p *Parser) checkDepTName(ty *VarType, dm *map[string]bool, dmj *map[string]string) {
 	if ty.Type == lex.TkName {
 		name := ty.TypeSt
 		if strings.Count(name, "::") == 0 {
@@ -626,7 +626,7 @@ func (p *Parse) checkDepTName(ty *VarType, dm *map[string]bool, dmj *map[string]
 }
 
 // analysis custom type，whether have definition
-func (p *Parse) analyzeTName() {
+func (p *Parser) analyzeTName() {
 	for i, v := range p.Structs {
 		for _, v := range v.Member {
 			ty := v.Type
@@ -635,7 +635,7 @@ func (p *Parse) analyzeTName() {
 	}
 }
 
-func (p *Parse) analyzeDefault() {
+func (p *Parser) analyzeDefault() {
 	for _, v := range p.Structs {
 		for i, r := range v.Member {
 			if r.Default != "" && r.DefType == lex.TkName {
@@ -659,7 +659,7 @@ func (p *Parse) analyzeDefault() {
 	}
 }
 
-func (p *Parse) analyzeDepend() {
+func (p *Parser) analyzeDepend() {
 	for _, v := range p.Includes {
 		relativePath := path.Dir(p.Source)
 		dependFile := relativePath + "/" + v
@@ -687,7 +687,7 @@ func path2ProtoName(path string) string {
 }
 
 // ParseFile parse a file,return grammar tree.
-func ParseFile(filePath string, incChain []string) *Parse {
+func ParseFile(filePath string, incChain []string) *Parser {
 	b, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		panic("file read error: " + filePath + ". " + err.Error())
