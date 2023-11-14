@@ -64,7 +64,7 @@ OUT:
 	for {
 		p.next()
 		t := p.t
-		switch t.T {
+		switch t.Type {
 		case lex.TkEos:
 			break OUT
 		case lex.TkInclude:
@@ -80,13 +80,13 @@ OUT:
 
 // VarType contains variable type(token)
 type VarType struct {
-	Type     lex.TK   // basic type
-	Unsigned bool     // whether unsigned
-	TypeSt   string   // custom type name, such as an enumerated struct,at this time Type=lex.TkName
-	CType    lex.TK   // make sure which type of custom type is,lex.TkEnum, lex.TkStruct
-	TypeK    *VarType // vector's member variable,the key of map
-	TypeV    *VarType // the value of map
-	TypeL    int64    // length of array
+	Type     lex.TokenType // basic type
+	Unsigned bool          // whether unsigned
+	TypeSt   string        // custom type name, such as an enumerated struct,at this time Type=lex.TkName
+	CType    lex.TokenType // make sure which type of custom type is,lex.TkEnum, lex.TkStruct
+	TypeK    *VarType      // vector's member variable,the key of map
+	TypeV    *VarType      // the value of map
+	TypeL    int64         // length of array
 }
 
 // StructMember member struct.
@@ -97,7 +97,7 @@ type StructMember struct {
 	Key       string // after the uppercase converted key
 	OriginKey string // original key
 	Default   string
-	DefType   lex.TK
+	DefType   lex.TokenType
 }
 
 // StructMemberSorter When serializing, make sure the tags are ordered.
@@ -174,9 +174,9 @@ func (p *Parse) next() {
 	p.t = p.lex.NextToken()
 }
 
-func (p *Parse) expect(t lex.TK) {
+func (p *Parse) expect(t lex.TokenType) {
 	p.next()
-	if p.t.T != t {
+	if p.t.Type != t {
 		p.parseErr("expect " + lex.TokenMap[t])
 	}
 }
@@ -191,11 +191,11 @@ func (p *Parse) makeUnsigned(utype *VarType) {
 }
 
 func (p *Parse) parseType() *VarType {
-	vtype := &VarType{Type: p.t.T}
+	vtype := &VarType{Type: p.t.Type}
 
 	switch vtype.Type {
 	case lex.TkName:
-		vtype.TypeSt = p.t.S.S
+		vtype.TypeSt = p.t.Value.S
 	case lex.TkTInt, lex.TkTBool, lex.TkTShort, lex.TkTLong, lex.TkTByte, lex.TkTFloat, lex.TkTDouble, lex.TkTString:
 		// no nothing
 	case lex.TkTVector:
@@ -225,7 +225,7 @@ func (p *Parse) parseType() *VarType {
 func (p *Parse) parseEnum() {
 	enum := EnumInfo{}
 	p.expect(lex.TkName)
-	enum.Name = p.t.S.S
+	enum.Name = p.t.Value.S
 	for _, v := range p.Enums {
 		if v.Name == enum.Name {
 			p.parseErr(enum.Name + " Redefine.")
@@ -236,13 +236,13 @@ func (p *Parse) parseEnum() {
 LFOR:
 	for {
 		p.next()
-		switch p.t.T {
+		switch p.t.Type {
 		case lex.TkBraceRight:
 			break LFOR
 		case lex.TkName:
-			k := p.t.S.S
+			k := p.t.Value.S
 			p.next()
-			switch p.t.T {
+			switch p.t.Type {
 			case lex.TkComma:
 				m := EnumMember{Key: k, Type: 2}
 				enum.Member = append(enum.Member, m)
@@ -252,20 +252,20 @@ LFOR:
 				break LFOR
 			case lex.TkEq:
 				p.next()
-				switch p.t.T {
+				switch p.t.Type {
 				case lex.TkInteger:
-					m := EnumMember{Key: k, Value: int32(p.t.S.I)}
+					m := EnumMember{Key: k, Value: int32(p.t.Value.I)}
 					enum.Member = append(enum.Member, m)
 				case lex.TkName:
-					m := EnumMember{Key: k, Type: 1, Name: p.t.S.S}
+					m := EnumMember{Key: k, Type: 1, Name: p.t.Value.S}
 					enum.Member = append(enum.Member, m)
 				default:
-					p.parseErr("not expect " + lex.TokenMap[p.t.T])
+					p.parseErr("not expect " + lex.TokenMap[p.t.Type])
 				}
 				p.next()
-				if p.t.T == lex.TkBraceRight {
+				if p.t.Type == lex.TkBraceRight {
 					break LFOR
-				} else if p.t.T == lex.TkComma {
+				} else if p.t.Type == lex.TkComma {
 				} else {
 					p.parseErr("expect , or }")
 				}
@@ -277,24 +277,24 @@ LFOR:
 }
 
 func (p *Parse) parseStructMemberDefault(m *StructMember) {
-	m.DefType = p.t.T
-	switch p.t.T {
+	m.DefType = p.t.Type
+	switch p.t.Type {
 	case lex.TkInteger:
 		if !lex.IsNumberType(m.Type.Type) && m.Type.Type != lex.TkName {
 			// enum auto defined type ,default value is number.
 			p.parseErr("type does not accept number")
 		}
-		m.Default = p.t.S.S
+		m.Default = p.t.Value.S
 	case lex.TkFloat:
 		if !lex.IsNumberType(m.Type.Type) {
 			p.parseErr("type does not accept number")
 		}
-		m.Default = p.t.S.S
+		m.Default = p.t.Value.S
 	case lex.TkString:
 		if lex.IsNumberType(m.Type.Type) {
 			p.parseErr("type does not accept string")
 		}
-		m.Default = `"` + p.t.S.S + `"`
+		m.Default = `"` + p.t.Value.S + `"`
 	case lex.TkTrue:
 		if m.Type.Type != lex.TkTBool {
 			p.parseErr("default value format error")
@@ -306,7 +306,7 @@ func (p *Parse) parseStructMemberDefault(m *StructMember) {
 		}
 		m.Default = "false"
 	case lex.TkName:
-		m.Default = p.t.S.S
+		m.Default = p.t.Value.S
 	default:
 		p.parseErr("default value format error")
 	}
@@ -315,20 +315,20 @@ func (p *Parse) parseStructMemberDefault(m *StructMember) {
 func (p *Parse) parseStructMember() *StructMember {
 	// tag or end
 	p.next()
-	if p.t.T == lex.TkBraceRight {
+	if p.t.Type == lex.TkBraceRight {
 		return nil
 	}
-	if p.t.T != lex.TkInteger {
+	if p.t.Type != lex.TkInteger {
 		p.parseErr("expect tags.")
 	}
 	m := &StructMember{}
-	m.Tag = int32(p.t.S.I)
+	m.Tag = int32(p.t.Value.I)
 
 	// require or optional
 	p.next()
-	if p.t.T == lex.TkRequire {
+	if p.t.Type == lex.TkRequire {
 		m.Require = true
-	} else if p.t.T == lex.TkOptional {
+	} else if p.t.Type == lex.TkOptional {
 		m.Require = false
 	} else {
 		p.parseErr("expect require or optional")
@@ -336,7 +336,7 @@ func (p *Parse) parseStructMember() *StructMember {
 
 	// type
 	p.next()
-	if !lex.IsType(p.t.T) && p.t.T != lex.TkName && p.t.T != lex.TkUnsigned {
+	if !lex.IsType(p.t.Type) && p.t.Type != lex.TkName && p.t.Type != lex.TkUnsigned {
 		p.parseErr("expect type")
 	} else {
 		m.Type = p.parseType()
@@ -344,23 +344,23 @@ func (p *Parse) parseStructMember() *StructMember {
 
 	// key
 	p.expect(lex.TkName)
-	m.Key = p.t.S.S
+	m.Key = p.t.Value.S
 
 	p.next()
-	if p.t.T == lex.TkSemi {
+	if p.t.Type == lex.TkSemi {
 		return m
 	}
-	if p.t.T == lex.TkSquareLeft {
+	if p.t.Type == lex.TkSquareLeft {
 		p.expect(lex.TkInteger)
-		m.Type = &VarType{Type: lex.TkTArray, TypeK: m.Type, TypeL: p.t.S.I}
+		m.Type = &VarType{Type: lex.TkTArray, TypeK: m.Type, TypeL: p.t.Value.I}
 		p.expect(lex.TkSquarerRight)
 		p.expect(lex.TkSemi)
 		return m
 	}
-	if p.t.T != lex.TkEq {
+	if p.t.Type != lex.TkEq {
 		p.parseErr("expect ; or =")
 	}
-	if p.t.T == lex.TkTMap || p.t.T == lex.TkTVector || p.t.T == lex.TkName {
+	if p.t.Type == lex.TkTMap || p.t.Type == lex.TkTVector || p.t.Type == lex.TkName {
 		p.parseErr("map, vector, custom type cannot set default value")
 	}
 
@@ -390,7 +390,7 @@ func (p *Parse) sortTag(st *StructInfo) {
 func (p *Parse) parseStruct() {
 	st := StructInfo{}
 	p.expect(lex.TkName)
-	st.Name = p.t.S.S
+	st.Name = p.t.Value.S
 	for _, v := range p.Structs {
 		if v.Name == st.Name {
 			p.parseErr(st.Name + " Redefine.")
@@ -418,7 +418,7 @@ func (p *Parse) parseConst() {
 
 	// type
 	p.next()
-	switch p.t.T {
+	switch p.t.Type {
 	case lex.TkTVector, lex.TkTMap:
 		p.parseErr("const no supports type vector or map.")
 	case lex.TkTBool, lex.TkTByte, lex.TkTShort,
@@ -430,23 +430,23 @@ func (p *Parse) parseConst() {
 	}
 
 	p.expect(lex.TkName)
-	m.Name = p.t.S.S
+	m.Name = p.t.Value.S
 
 	p.expect(lex.TkEq)
 
 	// default
 	p.next()
-	switch p.t.T {
+	switch p.t.Type {
 	case lex.TkInteger, lex.TkFloat:
 		if !lex.IsNumberType(m.Type.Type) {
 			p.parseErr("type does not accept number")
 		}
-		m.Value = p.t.S.S
+		m.Value = p.t.Value.S
 	case lex.TkString:
 		if lex.IsNumberType(m.Type.Type) {
 			p.parseErr("type does not accept string")
 		}
-		m.Value = `"` + p.t.S.S + `"`
+		m.Value = `"` + p.t.Value.S + `"`
 	case lex.TkTrue:
 		if m.Type.Type != lex.TkTBool {
 			p.parseErr("default value format error")
@@ -471,7 +471,7 @@ func (p *Parse) parseModuleSegment() {
 	for {
 		p.next()
 		t := p.t
-		switch t.T {
+		switch t.Type {
 		case lex.TkBraceRight:
 			p.expect(lex.TkSemi)
 			return
@@ -482,7 +482,7 @@ func (p *Parse) parseModuleSegment() {
 		case lex.TkStruct:
 			p.parseStruct()
 		default:
-			p.parseErr("not except " + lex.TokenMap[t.T])
+			p.parseErr("not except " + lex.TokenMap[t.Type])
 		}
 	}
 }
@@ -492,7 +492,7 @@ func (p *Parse) parseModule() {
 
 	if p.Module != "" {
 		// 解决一个tars文件中定义多个module
-		name := p.ProtoName + "_" + p.t.S.S + ".tars"
+		name := p.ProtoName + "_" + p.t.Value.S + ".tars"
 		newp := newParse(name, nil, nil)
 		newp.IncChain = p.IncChain
 		newp.lex = p.lex
@@ -500,7 +500,7 @@ func (p *Parse) parseModule() {
 		newp.IncParse = p.IncParse
 		cowp := *p
 		newp.IncParse = append(newp.IncParse, &cowp)
-		newp.Module = p.t.S.S
+		newp.Module = p.t.Value.S
 		newp.parseModuleSegment()
 		newp.analyzeDepend()
 		if p.fileNames[name] {
@@ -520,18 +520,18 @@ func (p *Parse) parseModule() {
 		}
 		p.lex = newp.lex
 	} else {
-		p.Module = p.t.S.S
+		p.Module = p.t.Value.S
 		p.parseModuleSegment()
 	}
 }
 
 func (p *Parse) parseInclude() {
 	p.expect(lex.TkString)
-	p.Includes = append(p.Includes, p.t.S.S)
+	p.Includes = append(p.Includes, p.t.Value.S)
 }
 
 // Looking for the true type of user-defined identifier
-func (p *Parse) findTNameType(tname string) (lex.TK, string, string) {
+func (p *Parse) findTNameType(tname string) (lex.TokenType, string, string) {
 	for _, v := range p.Structs {
 		if p.Module+"::"+v.Name == tname {
 			return lex.TkStruct, p.Module, p.ProtoName

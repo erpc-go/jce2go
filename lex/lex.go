@@ -10,21 +10,21 @@ import (
 // LexState record lexical state.
 type LexState struct {
 	current    byte // 当前正在处理的字节
-	lineNumber int  // 当前行号
+	lineNumber int  // 当前处理的行号
 
-	tokenBuff bytes.Buffer  // 存储标记的缓冲区
-	buff      *bytes.Buffer // 存储输入源代码的缓冲区
+	tokenBuff bytes.Buffer // 存储标记的缓冲区
 
-	source string // 源代码的字符串表示
+	filename string        // 处理的文件名
+	source   *bytes.Buffer // 存储输入源代码的缓冲区
 }
 
 // NewLexState to update LexState struct.
-func NewLexState(source string, buff []byte) *LexState {
+func NewLexState(filename string, source []byte) *LexState {
 	return &LexState{
 		current:    ' ',
 		lineNumber: 1,
-		source:     source,
-		buff:       bytes.NewBuffer(buff),
+		filename:   filename,
+		source:     bytes.NewBuffer(source),
 	}
 }
 
@@ -35,7 +35,7 @@ func NewLexState(source string, buff []byte) *LexState {
 // 最后，NextToken 方法返回指向填充的 Token 结构的指针。这个方法可以在词法分析过程中多次调用，以依次获取源代码中的所有标记。
 func (ls *LexState) NextToken() *Token {
 	tk := &Token{}
-	tk.T, tk.S = ls.llex()
+	tk.Type, tk.Value = ls.llex()
 	tk.Line = ls.lineNumber
 	return tk
 }
@@ -44,7 +44,7 @@ func (ls *LexState) NextToken() *Token {
 // 生成一个详细的错误消息并引发一个 panic。这个方法在词法分析过程中遇到错误时被调用。
 func (ls *LexState) lexErr(err string) {
 	line := strconv.Itoa(ls.lineNumber)
-	panic(ls.source + ": " + line + ".    " + err)
+	panic(ls.filename + ": " + line + ".    " + err)
 }
 
 // incLineNumber 方法用于在遇到换行符时递增行号。
@@ -64,10 +64,10 @@ func (ls *LexState) incLineNumber() {
 // 它首先检查当前字符是否为数字、点（'.'）或十六进制数字（'x'、'X' 或其他十六进制数字）。
 // 然后，它将字符添加到 tokenBuff 并获取下一个字符。当读取完整个数字后，它将尝试将其解析为浮点数或整数，并将结果存储在 SemInfo 结构中。
 // 如果解析过程中出现错误，它将调用 lexErr 方法引发一个 panic。
-func (ls *LexState) readNumber() (TK, *SemInfo) {
+func (ls *LexState) readNumber() (TokenType, *TokenValue) {
 	hasDot := false
 	isHex := false
-	sem := &SemInfo{}
+	sem := &TokenValue{}
 	for isNumber(ls.current) || ls.current == '.' || ls.current == 'x' || ls.current == 'X' ||
 		(isHex && isHexNumber(ls.current)) {
 
@@ -104,8 +104,8 @@ func (ls *LexState) readNumber() (TK, *SemInfo) {
 // 接下来，代码遍历已知的关键字和类型，检查标识符是否与它们之一匹配。如果找到匹配项，它将返回对应的 TK 值。
 // 如果标识符不是关键字或类型，那么它被视为普通的变量名，返回 tkName 和包含标识符字符串的 SemInfo 结构。
 // 这个方法在词法分析过程中被调用，以读取标识符并将其分类为关键字、类型或变量名。
-func (ls *LexState) readIdent() (TK, *SemInfo) {
-	sem := &SemInfo{}
+func (ls *LexState) readIdent() (TokenType, *TokenValue) {
+	sem := &TokenValue{}
 	var last byte
 
 	// :: Point number processing namespace
@@ -144,7 +144,7 @@ func (ls *LexState) readIdent() (TK, *SemInfo) {
 // readSharp 方法用于处理以 # 开头的预处理指令。
 // 它首先跳过 # 字符，然后读取后面的字母。如果读取到的字符串不是 "include"，则引发一个错误，
 // 因为这里仅处理 #include 指令。如果是 "include"，则返回 tkInclude 标记。
-func (ls *LexState) readSharp() (TK, *SemInfo) {
+func (ls *LexState) readSharp() (TokenType, *TokenValue) {
 	ls.next()
 	for isLetter(ls.current) {
 		ls.tokenBuff.WriteByte(ls.current)
@@ -160,8 +160,8 @@ func (ls *LexState) readSharp() (TK, *SemInfo) {
 // readString 方法用于从输入缓冲区读取一个字符串。
 // 它首先跳过开始的双引号（"），然后读取后面的字符，直到遇到另一个双引号或输入结束（EOS）。
 // 如果在读取字符串时遇到输入结束，将引发一个错误。否则，将读取到的字符串存储在 SemInfo 结构中，并返回 tkString 标记。
-func (ls *LexState) readString() (TK, *SemInfo) {
-	sem := &SemInfo{}
+func (ls *LexState) readString() (TokenType, *TokenValue) {
+	sem := &TokenValue{}
 	ls.next()
 	for {
 		if ls.current == EOS {
@@ -179,6 +179,27 @@ func (ls *LexState) readString() (TK, *SemInfo) {
 	return TkString, sem
 }
 
+func (ls *LexState) readComment() (TokenType, *TokenValue) {
+	comment := &TokenValue{}
+	ls.next()
+	if ls.current == '/' {
+		ls.tokenBuff.WriteByte('/')
+		for !isNewLine(ls.current) && ls.current != EOS {
+			ls.tokenBuff.WriteByte(ls.current)
+			ls.next()
+		}
+	} else if ls.current == '*' {
+		ls.tokenBuff.WriteByte('/')
+		ls.tokenBuff.WriteByte('*')
+		ls.next()
+		ls.readLongComment()
+	} else {
+		ls.lexErr("lexical error，/")
+	}
+	comment.S = ls.tokenBuff.String()
+	return TkComment, comment
+}
+
 // readLongComment 方法用于处理长注释。
 // 它遍历输入缓冲区的字符，直到遇到 */（表示注释结束）或输入结束（EOS）。
 // 在遍历过程中，如果遇到换行符，它会调用 incLine 方法递增行号。如果在注释内遇到输入结束，将引发一个错误。
@@ -189,16 +210,20 @@ func (ls *LexState) readLongComment() {
 			ls.lexErr("respect */")
 			return
 		case '\n', '\r':
+			ls.tokenBuff.WriteByte(ls.current)
 			ls.incLineNumber()
 		case '*':
+			ls.tokenBuff.WriteByte(ls.current)
 			ls.next()
 			if ls.current == EOS {
 				return
 			} else if ls.current == '/' {
+				ls.tokenBuff.WriteByte(ls.current)
 				ls.next()
 				return
 			}
 		default:
+			ls.tokenBuff.WriteByte(ls.current)
 			ls.next()
 		}
 	}
@@ -209,7 +234,7 @@ func (ls *LexState) readLongComment() {
 // 如果读取过程中出现错误（例如，已到达输入结束），则将 current 设置为 EOS。
 func (ls *LexState) next() {
 	var err error
-	ls.current, err = ls.buff.ReadByte()
+	ls.current, err = ls.source.ReadByte()
 	if err != nil {
 		ls.current = EOS
 	}
@@ -220,7 +245,7 @@ func (ls *LexState) next() {
 // 如果是数字，则调用 readNumber 方法读取数字。
 // 如果是字母，则调用 readIdent 方法读取标识符。
 // 如果当前字符既不是数字也不是字母，则引发一个错误，指出无法识别的字符。
-func (ls *LexState) llexDefault() (TK, *SemInfo) {
+func (ls *LexState) llexDefault() (TokenType, *TokenValue) {
 	switch {
 	case isNumber(ls.current):
 		return ls.readNumber()
@@ -246,7 +271,7 @@ func (ls *LexState) llexDefault() (TK, *SemInfo) {
 // 对于其他字符，调用 llexDefault 方法处理默认情况（例如，读取数字和标识符）。
 // 当所有字符都被处理后，方法返回相应的 TK 值和 SemInfo 结构（如果适用）。
 // 这个方法在词法分析过程中被调用，以处理输入缓冲区中的各种字符并生成相应的词法标记。
-func (ls *LexState) llex() (TK, *SemInfo) {
+func (ls *LexState) llex() (TokenType, *TokenValue) {
 	for {
 		ls.tokenBuff.Reset()
 		switch ls.current {
@@ -256,18 +281,8 @@ func (ls *LexState) llex() (TK, *SemInfo) {
 			ls.next()
 		case '\n', '\r':
 			ls.incLineNumber()
-		case '/': // Comment processing
-			ls.next()
-			if ls.current == '/' {
-				for !isNewLine(ls.current) && ls.current != EOS {
-					ls.next()
-				}
-			} else if ls.current == '*' {
-				ls.next()
-				ls.readLongComment()
-			} else {
-				ls.lexErr("lexical error，/")
-			}
+		case '/':
+			return ls.readComment()
 		case '{':
 			ls.next()
 			return TkBraceLeft, nil
