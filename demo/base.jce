@@ -9,9 +9,10 @@ module base
     const short ERPC_VERSION   = 0x01;
     const int   TUP_VERSION    = 0x03;
 
+    // test
     struct request
     {
 
-        1  require byte   b; 
+        1  require byte   b;  // hhhhhh
     };
 };

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"path"
 
+	"github.com/erpc-go/jce2go/generate"
 	"github.com/erpc-go/jce2go/log"
 )
 
@@ -37,7 +38,7 @@ func main() {
 
 		log.Debugf("begin parse file, name: %s", filename)
 
-		gen := NewGenerate(filename, modulePath, outdir)
+		gen := generate.NewGenerate(filename, modulePath, outdir, jsonOmitEmpty)
 		gen.Gen()
 	}
 }
