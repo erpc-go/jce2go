@@ -7,9 +7,7 @@ import (
 	"os"
 )
 
-var (
-	debug = false
-)
+var debug = false
 
 func StartDebug() {
 	debug = true
@@ -27,11 +25,11 @@ func Debugf(format string, a ...any) {
 		return
 	}
 
-	log.Printf(fmt.Sprintf("[DEBUG] %s", fmt.Sprintf(format, a...)))
+	log.Printf(fmt.Sprintf("[DEBUG] %s\n", fmt.Sprintf(format, a...)))
 }
 
 func Errorf(format string, a ...any) {
-	log.Printf(fmt.Sprintf("[ERROR] %s", fmt.Sprintf(format, a...)))
+	log.Printf(fmt.Sprintf("[ERROR] %s\n", fmt.Sprintf(format, a...)))
 }
 
 func Raw(a ...any) {

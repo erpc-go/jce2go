@@ -27,6 +27,7 @@ func (a StructMemberSorter) Less(i, j int) bool { return a[i].Tag < a[j].Tag }
 type StructInfo struct {
 	Name                string
 	Member              []StructMember
+	Comment             string
 	DependModule        map[string]bool
 	DependModuleWithJce map[string]string
 }

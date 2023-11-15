@@ -1,12 +1,36 @@
+// model ts
+
 module base
 { 
+// const co
     const short ERPC_VERSION   = 0x01; // hhhh
-    const int   TUP_VERSION    = 0x03; // lll 
+    const int   TUP_VERSION    = 0x03; // mm 
+    // lll
     const string   jj    = "tet";  // owd
+    // mm
 
+// mmo
     enum EMsgSendType
+    // mm
+    // mmoo
+    
+    /*dmm*/
     {
-        eSendTypeOnline         = 1,    
-        eSendTypeOffline        = 2,   
+    // ooo
+        hhh, // mmm  // oo
+        eSendTypeOnline         = 199,     // test
+        // jjjj;
+        eSendTypeOffline        = 88,     //ooo
+        // oomm
+        /*
+        sdf
+        wer
+        asdf
+        */
+    };
+
+// test
+    struct request {
+
     };
 };

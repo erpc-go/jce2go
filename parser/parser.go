@@ -17,12 +17,17 @@ import (
 type Parser struct {
 	Filepath string // 源文件路径
 
-	Module   string   // 包名
-	Includes []string // 依赖的其他 jce 文件
+	Module        string // 包名
+	ModuleComment string
+
+	Includes       []string // 依赖的其他 jce 文件
+	IncludeComment string
 
 	Enums   []EnumInfo   // 枚举信息列表
 	Consts  []ConstInfo  // 常量信息列表
 	Structs []StructInfo // 结构体信息列表
+
+	comments []lex.Token // 临时存储的注释
 
 	// have parsed include file
 	IncParse []*Parser // 已解析的包含文件
@@ -102,6 +107,8 @@ OUT:
 			p.parseInclude()
 		case lex.TkModule:
 			p.parseModule()
+		case lex.TkComment: // 注释暂存
+			p.comments = append(p.comments, *p.token)
 		default:
 			p.parseErr("Expect include or module.")
 		}
@@ -116,7 +123,7 @@ func (p *Parser) next() {
 }
 
 // 该方法返回下一个 token，而不实际前进到下一个 token
-func (p *Parser) peek() *lex.Token {
+func (p *Parser) peek() (t *lex.Token) {
 	return p.lex.PeekToken()
 }
 
@@ -143,6 +150,7 @@ func (p *Parser) parseErr(err string) {
 func (p *Parser) parseInclude() {
 	p.expect(lex.TkString)
 	p.Includes = append(p.Includes, p.token.Value.String)
+	p.IncludeComment = p.getPreComments()
 }
 
 // parseModule 方法用于处理模块声明。
@@ -154,6 +162,7 @@ func (p *Parser) parseModule() {
 	// 将模块名存储在 Module 字段中，并调用 parseModuleSegment 方法处理模块内的内容。
 	if p.Module == "" {
 		p.Module = p.token.Value.String
+		p.ModuleComment = p.getPreComments()
 		p.parseModuleSegment()
 		return
 	}
@@ -209,6 +218,8 @@ func (p *Parser) parseModuleSegment() {
 			p.parseEnum()
 		case lex.TkStruct: //  如果 token 类型为 lex.TkStruct，则调用 parseStruct 方法处理结构体声明
 			p.parseStruct()
+		case lex.TkComment: // 注释暂存
+			p.comments = append(p.comments, *p.token)
 		default: // 对于其他 token 类型，引发一个解析错误，指出不期望的 token 类型
 			j, _ := json.Marshal(p.token.Value)
 			p.parseErr("not except " + lex.TokenMap[p.token.Type] + " type, value: " + string(j))
@@ -216,11 +227,21 @@ func (p *Parser) parseModuleSegment() {
 	}
 }
 
+func (p *Parser) getPreComments() (comment string) {
+	for _, c := range p.comments {
+		comment += c.Value.String
+		comment += "\n"
+	}
+	p.comments = []lex.Token{}
+	return
+}
+
 // parseConst 方法是 Parser 结构的一个成员方法，用于解析常量声明。
 // 它遍历由词法分析器生成的 token，并根据 token 的类型执行相应的操作。以下是方法的主要步骤：
 func (p *Parser) parseConst() {
 	// 创建一个名为 consts 的新 ConstInfo 结构，用于存储常量信息。
 	consts := ConstInfo{}
+	consts.PreComment = p.getPreComments()
 
 	// 调用 next 方法获取下一个 token，并检查其类型。
 
@@ -275,15 +296,115 @@ func (p *Parser) parseConst() {
 	// 使用 expect 方法检查下一个 token 是否为分号（lex.TkSemi）。
 	p.expect(lex.TkSemi)
 
-	// 如果有注释
-	next := p.peek()
-	if next.Type == lex.TkComment {
-		consts.Comment = next.Value.String
+	// 后面同一行的注释
+	t := p.peek()
+	if t.Type == lex.TkComment && t.Line == p.token.Line {
+		consts.Comment = t.Value.String
 		p.next()
 	}
 
 	// 将常量信息结构 m 追加到 Consts 字段中。
 	p.Consts = append(p.Consts, consts)
+}
+
+// parseEnum 方法是 Parser 结构的一个成员方法，用于解析枚举声明。它遍历由词法分析器生成的 token，并根据 token 的类型执行相应的操作。以下是方法的主要步骤：
+func (p *Parser) parseEnum() {
+	// 创建一个名为 enum 的新 EnumInfo 结构，用于存储枚举信息。
+	enum := EnumInfo{}
+	enum.TypeComment = p.getPreComments()
+	// 使用 expect 方法检查下一个 token 是否为名称，并将其存储在 enum.Name 中。
+	p.expect(lex.TkName)
+	enum.Name = p.token.Value.String
+	// 遍历已解析的枚举列表，检查是否有与当前枚举名称相同的枚举。
+	for _, v := range p.Enums {
+		// 如果有重复的枚举名称，引发一个解析错误。
+		if v.Name == enum.Name {
+			p.parseErr(enum.Name + " Redefine.")
+		}
+	}
+
+	// { 前的注释
+	for {
+		t := p.peek()
+		if t.Type == lex.TkComment {
+			if enum.Comment != "" {
+				enum.Comment += "\n"
+			}
+			enum.Comment += t.Value.String
+			p.next()
+			continue
+		}
+		break
+	}
+
+	// 使用 expect 方法检查下一个 token 是否为左大括号（lex.TkBraceLeft）。
+	p.expect(lex.TkBraceLeft)
+
+	// 使用 for 循环遍历 token。在每次迭代中，根据 token 的类型处理枚举成员。各种情况如下：
+LFOR:
+	for {
+		p.next()
+		switch p.token.Type {
+		case lex.TkBraceRight: // 如果 token 类型为 lex.TkBraceRight（表示枚举声明的结束），则跳出循环。
+			break LFOR
+		case lex.TkName: // 如果 token 类型为 lex.TkName，则获取成员名称，并根据下一个 token 的类型设置成员值。成员值可以是整数、名称或未指定。
+			k := p.token.Value.String
+			p.next()
+			switch p.token.Type {
+			case lex.TkComma: // ,
+				m := EnumMember{Key: k, Type: EnumTypeEqual}
+				t := p.peek()
+				if t.Type == lex.TkComment { // 枚举支持一个注释
+					m.Comment = t.Value.String
+					p.next()
+				}
+				enum.Member = append(enum.Member, m)
+			case lex.TkBraceRight: // }
+				m := EnumMember{Key: k, Type: EnumTypeEqual}
+				enum.Member = append(enum.Member, m)
+				break LFOR
+			case lex.TkEq: // =
+				p.next()
+				var m EnumMember
+				switch p.token.Type {
+				case lex.TkInteger: // int
+					m = EnumMember{Key: k, Value: int32(p.token.Value.Int)}
+				case lex.TkName: // name
+					m = EnumMember{Key: k, Type: EnumTypeName, Name: p.token.Value.String}
+				default:
+					p.parseErr("not expect " + lex.TokenMap[p.token.Type])
+				}
+				p.next()
+				if p.token.Type == lex.TkBraceRight { // }
+					enum.Member = append(enum.Member, m)
+					break LFOR
+				} else if p.token.Type == lex.TkComma { // ,
+					t := p.peek()
+					if t.Type == lex.TkComment { // 枚举支持一个注释
+						m.Comment = t.Value.String
+						p.next()
+					}
+					enum.Member = append(enum.Member, m)
+				} else {
+					p.parseErr("expect , or }")
+				}
+			}
+		case lex.TkComment:
+			m := EnumMember{Type: 3, Comment: p.token.Value.String}
+			enum.Member = append(enum.Member, m)
+
+		default:
+			// 对于其他 token 类型，引发一个解析错误，指出不期望的 token 类型。
+
+		}
+
+	}
+
+	// 使用 expect 方法检查下一个 token 是否为分号（lex.TkSemi）。
+	p.expect(lex.TkSemi)
+	// 将枚举信息结构 enum 追加到 Enums 字段中。
+	p.Enums = append(p.Enums, enum)
+	// log.Debugf("%+v\n", enum)
 }
 
 func (p *Parser) makeUnsigned(utype *VarType) {
@@ -325,60 +446,6 @@ func (p *Parser) parseType() *VarType {
 		p.parseErr("expert type")
 	}
 	return vtype
-}
-
-func (p *Parser) parseEnum() {
-	enum := EnumInfo{}
-	p.expect(lex.TkName)
-	enum.Name = p.token.Value.String
-	for _, v := range p.Enums {
-		if v.Name == enum.Name {
-			p.parseErr(enum.Name + " Redefine.")
-		}
-	}
-	p.expect(lex.TkBraceLeft)
-
-LFOR:
-	for {
-		p.next()
-		switch p.token.Type {
-		case lex.TkBraceRight:
-			break LFOR
-		case lex.TkName:
-			k := p.token.Value.String
-			p.next()
-			switch p.token.Type {
-			case lex.TkComma:
-				m := EnumMember{Key: k, Type: 2}
-				enum.Member = append(enum.Member, m)
-			case lex.TkBraceRight:
-				m := EnumMember{Key: k, Type: 2}
-				enum.Member = append(enum.Member, m)
-				break LFOR
-			case lex.TkEq:
-				p.next()
-				switch p.token.Type {
-				case lex.TkInteger:
-					m := EnumMember{Key: k, Value: int32(p.token.Value.Int)}
-					enum.Member = append(enum.Member, m)
-				case lex.TkName:
-					m := EnumMember{Key: k, Type: 1, Name: p.token.Value.String}
-					enum.Member = append(enum.Member, m)
-				default:
-					p.parseErr("not expect " + lex.TokenMap[p.token.Type])
-				}
-				p.next()
-				if p.token.Type == lex.TkBraceRight {
-					break LFOR
-				} else if p.token.Type == lex.TkComma {
-				} else {
-					p.parseErr("expect , or }")
-				}
-			}
-		}
-	}
-	p.expect(lex.TkSemi)
-	p.Enums = append(p.Enums, enum)
 }
 
 func (p *Parser) parseStructMemberDefault(m *StructMember) {
@@ -494,6 +561,8 @@ func (p *Parser) sortTag(st *StructInfo) {
 
 func (p *Parser) parseStruct() {
 	st := StructInfo{}
+	st.Comment = p.getPreComments()
+
 	p.expect(lex.TkName)
 	st.Name = p.token.Value.String
 	for _, v := range p.Structs {

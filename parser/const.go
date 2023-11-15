@@ -4,10 +4,11 @@ import "github.com/erpc-go/jce2go/utils"
 
 // ConstInfo record const information.
 type ConstInfo struct {
-	Type    *VarType
-	Name    string
-	Value   string
-	Comment string
+	Type       *VarType
+	Name       string
+	Value      string
+	PreComment string
+	Comment    string
 }
 
 func (cst *ConstInfo) Rename() {

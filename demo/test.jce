@@ -1,6 +1,9 @@
+// iii
 #include "base.jce"
 
+// hhhhhhhhhhhhhhhh
 module test {
+// test
     struct RequestPacket
     {
         1  require  byte                         b; 
