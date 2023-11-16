@@ -7,13 +7,15 @@ import (
 
 // StructMember member struct.
 type StructMember struct {
-	Tag       int32
-	Require   bool
-	Type      *VarType
-	Key       string // after the uppercase converted key
-	OriginKey string // original key
-	Default   string
-	DefType   lex.TokenType
+	CommentType string
+	Tag         int32
+	Require     bool
+	Type        *VarType
+	Key         string // after the uppercase converted key
+	OriginKey   string // original key
+	Default     string
+	DefType     lex.TokenType
+	Comment     string
 }
 
 // StructMemberSorter When serializing, make sure the tags are ordered.
@@ -28,6 +30,7 @@ type StructInfo struct {
 	Name                string
 	Member              []StructMember
 	Comment             string
+	commentTagNum       int
 	DependModule        map[string]bool
 	DependModuleWithJce map[string]string
 }

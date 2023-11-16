@@ -22,20 +22,22 @@ var _ = jce.Int1
 
 // test
 type RequestPacket struct {
-	B       int8                    `json:"b" tag:"1"`
-	S       int16                   `json:"s" tag:"2"`
-	I       int32                   `json:"i" tag:"3"`
-	L       int64                   `json:"l" tag:"4"`
-	F       float32                 `json:"f" tag:"5"`
-	D       float64                 `json:"d" tag:"6"`
-	S1      string                  `json:"s1" tag:"7"`
-	S2      string                  `json:"s2" tag:"8"`
-	I2      int32                   `json:"i2" tag:"9"`
+	// jjjjl
+	B  int8    `json:"b" tag:"1"` //oo
+	S  int16   `json:"s" tag:"2"`
+	I  int32   `json:"i" tag:"3"`
+	L  int64   `json:"l" tag:"4"`
+	F  float32 `json:"f" tag:"5"`
+	D  float64 `json:"d" tag:"6"`
+	S1 string  `json:"s1" tag:"7"`
+	S2 string  `json:"s2" tag:"8"`
+	I2 int32   `json:"i2" tag:"9"`
+	/*sdf*/
 	Buffer1 []int8                  `json:"buffer1" tag:"10"`
 	Buffer2 []uint8                 `json:"buffer2" tag:"11"`
 	Arr1    []string                `json:"arr1" tag:"12"`
 	Arr2    [][]int32               `json:"arr2" tag:"13"`
-	M1      map[string]string       `json:"m1" tag:"14"`
+	M1      map[string]string       `json:"m1" tag:"14"` //ooo
 	Arr4    []map[int32]string      `json:"arr4" tag:"15"`
 	Arr3    []base.Request          `json:"arr3" tag:"16"`
 	M2      map[string]base.Request `json:"m2" tag:"17"`

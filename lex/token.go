@@ -80,6 +80,14 @@ const (
 	TkComment // 注释
 )
 
+func TokenMaps(t Token) string {
+	if int(t.Type) > len(TokenMap) {
+		return ""
+	}
+	v := TokenMap[t.Type]
+	return v
+}
+
 // TokenMap record token  value.
 // TokenMap 数组将 TK 类型的值映射到它们对应的字符串表示。这个映射有助于在调试或输出错误消息时更容易地理解和显示这些标记。
 var TokenMap = [...]string{

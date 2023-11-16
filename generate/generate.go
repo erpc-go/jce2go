@@ -2,7 +2,7 @@ package generate
 
 import (
 	"bytes"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"go/format"
 	"io/ioutil"
@@ -75,8 +75,9 @@ func (gen *Generate) Gen() {
 	// 解析文件
 	gen.p = parser.ParseFile(gen.filepath, make([]string, 0))
 
-	b, _ := json.Marshal(gen.p)
-	log.Debugf(string(b))
+	// b, _ := json.Marshal(gen.p)
+	// log.Debugf(string(b))
+	log.Debugf("begin GenAll")
 
 	// 开始代码生成
 	gen.genAll()
@@ -90,6 +91,7 @@ func (gen *Generate) genAll() {
 	if len(gen.p.Enums) == 0 && len(gen.p.Consts) == 0 && len(gen.p.Structs) == 0 {
 		return
 	}
+	log.Debugf("hhh")
 
 	gen.genIncludeFiles()
 	gen.genFileComment()
@@ -283,6 +285,7 @@ func (gen *Generate) genStructs() {
 }
 
 func (gen *Generate) genStruct(st *parser.StructInfo) {
+	log.Debugf("begin genStruct")
 	gen.vc = 0
 	st.Rename()
 
@@ -296,16 +299,21 @@ func (gen *Generate) genStruct(st *parser.StructInfo) {
 // 生成 struct 的定义
 // 默认生成 json、tag
 func (gen *Generate) genStructDefine(st *parser.StructInfo) {
+	log.Debugf("begin genStructDefine")
 	gen.writeString(st.Comment)
 	gen.writeString("type " + st.Name + " struct {\n")
 
 	for _, v := range st.Member {
+		if v.CommentType != "" {
+			gen.writeString(v.CommentType + "\n")
+			continue
+		}
 		if gen.jsonOmitEmpty {
-			gen.writeString("\t" + v.Key + " " + gen.genType(v.Type) + " `json:\"" + v.OriginKey + ",omitempty\"`\n")
+			gen.writeString("\t" + v.Key + " " + gen.genType(v.Type) + " `json:\"" + v.OriginKey + ",omitempty" + "\"`" + v.Comment + "\n")
 			continue
 		}
 
-		gen.writeString("\t" + v.Key + " " + gen.genType(v.Type) + " `json:\"" + v.OriginKey + `"` + ` tag:"` + strconv.Itoa(int(v.Tag)) + "\"`\n")
+		gen.writeString("\t" + v.Key + " " + gen.genType(v.Type) + " `json:\"" + v.OriginKey + `"` + ` tag:"` + strconv.Itoa(int(v.Tag)) + "\"`" + v.Comment + "\n")
 	}
 
 	gen.writeString("}\n")
@@ -313,9 +321,13 @@ func (gen *Generate) genStructDefine(st *parser.StructInfo) {
 
 // 生成 struct optional 成员的默认赋值
 func (gen *Generate) genFunResetDefault(st *parser.StructInfo) {
+	log.Debugf("begin genFunResetDefault")
 	gen.writeString("\nfunc (st *" + st.Name + ") resetDefault() {\n")
 
 	for _, v := range st.Member {
+		if v.CommentType != "" {
+			continue
+		}
 		if v.Default == "" {
 			continue
 		}
@@ -344,6 +356,9 @@ func (st *` + st.Name + `) ReadFrom(r io.Reader) (n int64, err error) {
 `)
 
 	for _, v := range st.Member {
+		if v.CommentType != "" {
+			continue
+		}
 		gen.genReadVar(&v, "st.")
 	}
 
@@ -532,6 +547,9 @@ func (st *` + st.Name + `) WriteTo(w io.Writer) (n int64, err error) {
 `)
 
 	for _, v := range st.Member {
+		if v.CommentType != "" {
+			continue
+		}
 		gen.genWriteVar(&v, "st.", false)
 	}
 
@@ -684,7 +702,7 @@ for k` + vc + `, v` + vc + ` := range ` + gen.genVariableName(prefix, mb.Key) + 
 
 // 保存文件
 func (gen *Generate) saveFiles() {
-	log.Debugf(gen.code.String())
+	// log.Debugf(gen.code.String())
 
 	filename := gen.p.ProtoName + ".jce.go"
 

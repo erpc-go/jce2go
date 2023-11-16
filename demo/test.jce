@@ -6,7 +6,8 @@ module test {
 // test
     struct RequestPacket
     {
-        1  require  byte                         b; 
+    // jjjjl
+        1  require  byte                         b;  //oo
         2  require  short                        s; 
         3  require  int                          i;
         4  require  long                         l; 
@@ -15,11 +16,12 @@ module test {
         7  require  string                       s1; 
         8  optional string                       s2="test"; 
         9  optional int                          i2;
+        /*sdf*/
         10 require  vector<byte>                 buffer1;
         11 require  vector<unsigned byte>        buffer2;
         12 optional vector<string>               arr1;
         13 optional vector<vector<int>>          arr2;
-        14 require  map<string, string>          m1;
+        14 require  map<string, string>          m1; //ooo
         15 require  vector<map<int,string>>      arr4;
         16 require  vector<base::request>        arr3;
         17 require  map<string, base::request>   m2;

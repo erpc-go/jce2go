@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/erpc-go/jce2go/lex"
+	"github.com/erpc-go/jce2go/log"
 	"github.com/erpc-go/jce2go/utils"
 )
 
@@ -80,6 +81,7 @@ func ParseFile(filePath string, incChain []string) *Parser {
 
 	p := newParse(filePath, b, incChain)
 	p.parse()
+	log.Debugf("end parseFile,%+v", filePath)
 
 	return p
 }
@@ -113,7 +115,9 @@ OUT:
 			p.parseErr("Expect include or module.")
 		}
 	}
+	log.Debugf("end parse")
 	p.analyzeDepend()
+	log.Debugf("hhh")
 }
 
 // 获取下一个 token
@@ -211,6 +215,7 @@ func (p *Parser) parseModuleSegment() {
 		switch p.token.Type {
 		case lex.TkBraceRight: //  如果 token 类型为 lex.TkBraceRight（表示模块声明的结束
 			p.expect(lex.TkSemi) // 则调用 expect 方法检查下一个 token 是否为分号（lex.TkSemi），然后返回
+			log.Debugf("end parseModuleSegment")
 			return
 		case lex.TkConst: // 如果 token 类型为 lex.TkConst，则调用 parseConst 方法处理常量声明
 			p.parseConst()
@@ -407,6 +412,155 @@ LFOR:
 	// log.Debugf("%+v\n", enum)
 }
 
+// parseStruct 方法是 Parser 结构的一个成员方法，用于解析结构体声明。它遍历由词法分析器生成的 token，并根据 token 的类型执行相应的操作。以下是方法的主要步骤：
+func (p *Parser) parseStruct() {
+	st := StructInfo{}
+	st.commentTagNum = -9999
+	// 使用 getPreComments 方法获取结构体前的注释并存储在 st.Comment 中。
+	st.Comment = p.getPreComments()
+
+	// 使用 expect 方法检查下一个 token 是否为名称，并将其存储在 st.Name 中。
+	p.expect(lex.TkName)
+	st.Name = p.token.Value.String
+
+	// 遍历已解析的结构体列表，检查是否有与当前结构体名称相同的结构体。如果有重复的结构体名称，引发一个解析错误。
+	for _, v := range p.Structs {
+		if v.Name == st.Name {
+			p.parseErr(st.Name + " Redefine.")
+		}
+	}
+
+	// 注释
+	for {
+		t := p.peek()
+		if t.Type == lex.TkComment {
+			st.Comment += t.Value.String
+			st.Comment += "\n"
+			continue
+		}
+		break
+	}
+
+	// 使用 expect 方法检查下一个 token 是否为左大括号（lex.TkBraceLeft）。
+	p.expect(lex.TkBraceLeft)
+
+	// 使用 for 循环遍历 token，解析结构体成员。调用 parseStructMember 方法解析结构体成员，并将其添加到 st.Member 列表中。循环直到 parseStructMember 返回 nil。
+	for {
+		m := p.parseStructMember()
+		if m == nil {
+			break
+		}
+		if m.CommentType != "" {
+			st.commentTagNum++
+			m.Tag = int32(st.commentTagNum)
+		}
+		log.Debugf("%+v", m)
+		st.Member = append(st.Member, *m)
+	}
+	// 使用 expect 方法检查下一个 token 是否为分号（lex.TkSemi）。
+	p.expect(lex.TkSemi) // semicolon at the end of the struct.
+
+	// 调用 checkTag 和 sortTag 方法处理结构体成员的标签。
+	// p.sortTag(&st)
+	p.checkTag(&st)
+	// log.Debugf("%+v", utils.FormatJOSN(st))
+
+	// 将结构体信息结构 st 追加到 Structs 字段中。
+	p.Structs = append(p.Structs, st)
+}
+
+// parseStructMember 方法是 Parser 结构的一个成员方法，用于解析结构体成员。它遍历由词法分析器生成的 token，并根据 token 的类型执行相应的操作。以下是方法的主要步骤：
+func (p *Parser) parseStructMember() *StructMember {
+	// tag or end
+	// 获取下一个 token。
+	// 如果 token 类型为 lex.TkBraceRight（表示结构体声明的结束），则返回 nil。
+	p.next()
+	if p.token.Type == lex.TkBraceRight { // }
+		return nil
+	}
+
+	// 是注释
+	if p.token.Type == lex.TkComment {
+		m := &StructMember{}
+		m.CommentType = p.token.Value.String
+		return m
+	}
+
+	// 否则，检查 token 是否为整数（表示成员标签）。
+	if p.token.Type != lex.TkInteger {
+		p.parseErr("expect tags.")
+	}
+	m := &StructMember{}
+	m.Tag = int32(p.token.Value.Int)
+
+	// 获取下一个 token。
+	// 如果 token 类型为 lex.TkRequire 或 lex.TkOptional，则设置成员的 Require 属性。否则，引发一个解析错误。
+	// require or optional
+	p.next()
+	if p.token.Type == lex.TkRequire {
+		m.Require = true
+	} else if p.token.Type == lex.TkOptional {
+		m.Require = false
+	} else {
+		p.parseErr("expect require or optional")
+	}
+
+	// 获取下一个 token。如果 token 是一个有效的类型或名称，调用 parseType 方法解析类型并将其存储在 m.Type 中。否则，引发一个解析错误。
+	// type
+	p.next()
+	if !lex.IsType(p.token.Type) && p.token.Type != lex.TkName && p.token.Type != lex.TkUnsigned {
+		p.parseErr("expect type")
+	} else {
+		m.Type = p.parseType()
+	}
+
+	// 使用 expect 方法检查下一个 token 是否为名称，并将其存储在 m.Key 中。
+	// key
+	p.expect(lex.TkName)
+	m.Key = p.token.Value.String
+
+	// 获取下一个 token。根据 token 的类型，处理成员的默认值、数组类型或其他情况。如果遇到不符合预期的 token 类型，引发一个解析错误。
+	p.next()
+	if p.token.Type == lex.TkSemi { // ;
+		t := p.peek()
+		if t.Type == lex.TkComment && t.Line == p.token.Line {
+			m.Comment = t.Value.String
+			p.next()
+		}
+		return m
+	}
+	if p.token.Type == lex.TkSquareLeft { // [
+		p.expect(lex.TkInteger)
+		m.Type = &VarType{Type: lex.TkTArray, TypeK: m.Type, TypeL: p.token.Value.Int}
+		p.expect(lex.TkSquarerRight)
+		p.expect(lex.TkSemi)
+		return m
+	}
+	if p.token.Type != lex.TkEq {
+		p.parseErr("expect ; or =")
+	}
+	if p.token.Type == lex.TkTMap || p.token.Type == lex.TkTVector || p.token.Type == lex.TkName {
+		p.parseErr("map, vector, custom type cannot set default value")
+	}
+
+	// default
+	// 使用 expect 方法检查下一个 token 是否为分号（lex.TkSemi）。
+	p.next()
+	p.parseStructMemberDefault(m)
+	p.expect(lex.TkSemi) // ;
+
+	// 后面同一行的注释
+	t := p.peek()
+	log.Debugf("a: %+v %+v %v", lex.TokenMap[t.Type], *t.Value, t.Line)
+	log.Debugf("b: %+v, %+v, %+v", lex.TokenMap[p.token.Type], p.token.Line, p.token.Value == nil)
+	if t.Type == lex.TkComment && t.Line == p.token.Line {
+		m.Comment = t.Value.String
+		p.next()
+	}
+
+	return m
+}
+
 func (p *Parser) makeUnsigned(utype *VarType) {
 	switch utype.Type {
 	case lex.TkTInt, lex.TkTShort, lex.TkTByte:
@@ -484,66 +638,6 @@ func (p *Parser) parseStructMemberDefault(m *StructMember) {
 	}
 }
 
-func (p *Parser) parseStructMember() *StructMember {
-	// tag or end
-	p.next()
-	if p.token.Type == lex.TkBraceRight {
-		return nil
-	}
-	if p.token.Type != lex.TkInteger {
-		p.parseErr("expect tags.")
-	}
-	m := &StructMember{}
-	m.Tag = int32(p.token.Value.Int)
-
-	// require or optional
-	p.next()
-	if p.token.Type == lex.TkRequire {
-		m.Require = true
-	} else if p.token.Type == lex.TkOptional {
-		m.Require = false
-	} else {
-		p.parseErr("expect require or optional")
-	}
-
-	// type
-	p.next()
-	if !lex.IsType(p.token.Type) && p.token.Type != lex.TkName && p.token.Type != lex.TkUnsigned {
-		p.parseErr("expect type")
-	} else {
-		m.Type = p.parseType()
-	}
-
-	// key
-	p.expect(lex.TkName)
-	m.Key = p.token.Value.String
-
-	p.next()
-	if p.token.Type == lex.TkSemi {
-		return m
-	}
-	if p.token.Type == lex.TkSquareLeft {
-		p.expect(lex.TkInteger)
-		m.Type = &VarType{Type: lex.TkTArray, TypeK: m.Type, TypeL: p.token.Value.Int}
-		p.expect(lex.TkSquarerRight)
-		p.expect(lex.TkSemi)
-		return m
-	}
-	if p.token.Type != lex.TkEq {
-		p.parseErr("expect ; or =")
-	}
-	if p.token.Type == lex.TkTMap || p.token.Type == lex.TkTVector || p.token.Type == lex.TkName {
-		p.parseErr("map, vector, custom type cannot set default value")
-	}
-
-	// default
-	p.next()
-	p.parseStructMemberDefault(m)
-	p.expect(lex.TkSemi)
-
-	return m
-}
-
 func (p *Parser) checkTag(st *StructInfo) {
 	set := make(map[int32]bool)
 
@@ -557,34 +651,6 @@ func (p *Parser) checkTag(st *StructInfo) {
 
 func (p *Parser) sortTag(st *StructInfo) {
 	sort.Sort(StructMemberSorter(st.Member))
-}
-
-func (p *Parser) parseStruct() {
-	st := StructInfo{}
-	st.Comment = p.getPreComments()
-
-	p.expect(lex.TkName)
-	st.Name = p.token.Value.String
-	for _, v := range p.Structs {
-		if v.Name == st.Name {
-			p.parseErr(st.Name + " Redefine.")
-		}
-	}
-	p.expect(lex.TkBraceLeft)
-
-	for {
-		m := p.parseStructMember()
-		if m == nil {
-			break
-		}
-		st.Member = append(st.Member, *m)
-	}
-	p.expect(lex.TkSemi) // semicolon at the end of the struct.
-
-	p.checkTag(&st)
-	p.sortTag(&st)
-
-	p.Structs = append(p.Structs, st)
 }
 
 // Looking for the true type of user-defined identifier
@@ -655,6 +721,10 @@ func addToSet(m *map[string]bool, module string) {
 }
 
 func (p *Parser) checkDepTName(ty *VarType, dm *map[string]bool, dmj *map[string]string) {
+	log.Debugf("being checkDepTName, %+v, %+v, %+v", ty, dm, dmj)
+	if ty == nil {
+		return
+	}
 	if ty.Type == lex.TkName {
 		name := ty.TypeSt
 		if strings.Count(name, "::") == 0 {
@@ -680,6 +750,8 @@ func (p *Parser) checkDepTName(ty *VarType, dm *map[string]bool, dmj *map[string
 		p.checkDepTName(ty.TypeK, dm, dmj)
 		p.checkDepTName(ty.TypeV, dm, dmj)
 	}
+
+	log.Debugf("end checkDepTName")
 }
 
 // analysis custom type，whether have definition
@@ -690,6 +762,8 @@ func (p *Parser) analyzeTName() {
 			p.checkDepTName(ty, &p.Structs[i].DependModule, &p.Structs[i].DependModuleWithJce)
 		}
 	}
+
+	log.Debugf("end analyzeTName")
 }
 
 func (p *Parser) analyzeDefault() {
@@ -714,6 +788,7 @@ func (p *Parser) analyzeDefault() {
 			}
 		}
 	}
+	log.Debugf("end analyzeDefault")
 }
 
 // 分析文件的依赖关系
@@ -727,4 +802,5 @@ func (p *Parser) analyzeDepend() {
 
 	p.analyzeDefault()
 	p.analyzeTName()
+	log.Debugf("end analyzeDepend")
 }
