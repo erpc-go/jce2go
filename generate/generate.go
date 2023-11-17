@@ -74,7 +74,7 @@ func (gen *Generate) Gen() {
 	// 解析文件
 	gen.p = parser.ParseFile(gen.filepath, make([]string, 0))
 
-	log.Error("begin generate file:%s", gen.filepath)
+	log.Debug("begin generate file:%s", gen.filepath)
 
 	// 开始代码生成
 	gen.genAll()

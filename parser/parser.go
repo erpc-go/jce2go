@@ -76,7 +76,7 @@ func newParse(filepath string, source []byte, incChain []string) *Parser {
 func ParseFile(filePath string, incChain []string) *Parser {
 	b, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		panic("file read error: " + filePath + ". " + err.Error())
+		log.Error("read file %s failed, err:%s", filePath, err)
 	}
 
 	p := newParse(filePath, b, incChain)
@@ -146,7 +146,7 @@ func (p *Parser) parseErr(err string) {
 		line = strconv.Itoa(p.token.Line)
 	}
 
-	panic("[" + p.Filepath + ":" + line + "]" + err)
+	log.Error("[" + p.Filepath + ":" + line + "]" + err)
 }
 
 // parseInclude 方法用于处理包含指令。它首先调用 expect 方法，期望下一个 token 是一个字符串。然后，将该字符串添加到 Includes 字段中。
