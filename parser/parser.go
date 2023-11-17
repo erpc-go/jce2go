@@ -424,6 +424,8 @@ func (p *Parser) parseStruct() {
 	p.expect(lex.TkName)
 	st.Name = p.token.Value.String
 
+	log.Debug("1")
+
 	// 遍历已解析的结构体列表，检查是否有与当前结构体名称相同的结构体。如果有重复的结构体名称，引发一个解析错误。
 	for _, v := range p.Structs {
 		if v.Name == st.Name {
@@ -433,20 +435,24 @@ func (p *Parser) parseStruct() {
 
 	// 注释
 	for {
+		log.Debug("2")
 		t := p.peek()
 		if t.Type == lex.TkComment {
 			st.Comment += t.Value.String
 			st.Comment += "\n"
+			p.lex.NextToken()
 			continue
 		}
 		break
 	}
+	log.Debug("3")
 
 	// 使用 expect 方法检查下一个 token 是否为左大括号（lex.TkBraceLeft）。
 	p.expect(lex.TkBraceLeft)
 
 	// 使用 for 循环遍历 token，解析结构体成员。调用 parseStructMember 方法解析结构体成员，并将其添加到 st.Member 列表中。循环直到 parseStructMember 返回 nil。
 	for {
+		log.Debug("4")
 		m := p.parseStructMember()
 		if m == nil {
 			break
@@ -465,6 +471,7 @@ func (p *Parser) parseStruct() {
 	// p.sortTag(&st)
 	p.checkTag(&st)
 
+	log.Debug("5")
 	// 将结构体信息结构 st 追加到 Structs 字段中。
 	p.Structs = append(p.Structs, st)
 }

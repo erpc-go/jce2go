@@ -74,7 +74,7 @@ func (gen *Generate) Gen() {
 	// 解析文件
 	gen.p = parser.ParseFile(gen.filepath, make([]string, 0))
 
-	log.Debug("begin generate file:%s", gen.filepath)
+	log.Error("begin generate file:%s", gen.filepath)
 
 	// 开始代码生成
 	gen.genAll()
@@ -704,7 +704,8 @@ func (gen *Generate) saveFiles() {
 	// 格式化文件
 	beauty, err := format.Source(gen.code.Bytes())
 	if err != nil {
-		panic("go fmt fail. " + filename + " " + err.Error())
+		log.Error("go fmt fail. " + filename + " " + err.Error())
+		return
 	}
 
 	mkPath := gen.prefix + gen.p.Module
