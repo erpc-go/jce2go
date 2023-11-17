@@ -2,7 +2,6 @@ package generate
 
 import (
 	"bytes"
-	// "encoding/json"
 	"fmt"
 	"go/format"
 	"io/ioutil"
@@ -67,7 +66,7 @@ func (gen *Generate) Gen() {
 	// recover  panic
 	defer func() {
 		if err := recover(); err != nil {
-			log.Raw(err)
+			log.Raw("%s", err)
 			os.Exit(1)
 		}
 	}()
@@ -75,9 +74,7 @@ func (gen *Generate) Gen() {
 	// 解析文件
 	gen.p = parser.ParseFile(gen.filepath, make([]string, 0))
 
-	// b, _ := json.Marshal(gen.p)
-	// log.Debugf(string(b))
-	log.Debugf("begin GenAll")
+	log.Debug("begin generate file:%s", gen.filepath)
 
 	// 开始代码生成
 	gen.genAll()
@@ -91,7 +88,7 @@ func (gen *Generate) genAll() {
 	if len(gen.p.Enums) == 0 && len(gen.p.Consts) == 0 && len(gen.p.Structs) == 0 {
 		return
 	}
-	log.Debugf("hhh")
+	log.Debug("hhh")
 
 	gen.genIncludeFiles()
 	gen.genFileComment()
@@ -285,7 +282,7 @@ func (gen *Generate) genStructs() {
 }
 
 func (gen *Generate) genStruct(st *parser.StructInfo) {
-	log.Debugf("begin genStruct")
+	log.Debug("begin genStruct")
 	gen.vc = 0
 	st.Rename()
 
@@ -299,7 +296,7 @@ func (gen *Generate) genStruct(st *parser.StructInfo) {
 // 生成 struct 的定义
 // 默认生成 json、tag
 func (gen *Generate) genStructDefine(st *parser.StructInfo) {
-	log.Debugf("begin genStructDefine")
+	log.Debug("begin genStructDefine")
 	gen.writeString(st.Comment)
 	gen.writeString("type " + st.Name + " struct {\n")
 
@@ -321,7 +318,7 @@ func (gen *Generate) genStructDefine(st *parser.StructInfo) {
 
 // 生成 struct optional 成员的默认赋值
 func (gen *Generate) genFunResetDefault(st *parser.StructInfo) {
-	log.Debugf("begin genFunResetDefault")
+	log.Debug("begin genFunResetDefault")
 	gen.writeString("\nfunc (st *" + st.Name + ") resetDefault() {\n")
 
 	for _, v := range st.Member {
@@ -702,8 +699,6 @@ for k` + vc + `, v` + vc + ` := range ` + gen.genVariableName(prefix, mb.Key) + 
 
 // 保存文件
 func (gen *Generate) saveFiles() {
-	// log.Debugf(gen.code.String())
-
 	filename := gen.p.ProtoName + ".jce.go"
 
 	// 格式化文件
@@ -721,6 +716,8 @@ func (gen *Generate) saveFiles() {
 	if err = ioutil.WriteFile(mkPath+"/"+filename, beauty, 0o666); err != nil {
 		panic(err.Error())
 	}
+
+	log.Raw("[ok]generate %s -> %s\n", gen.filepath, mkPath+"/"+filename)
 }
 
 // 生成变量名

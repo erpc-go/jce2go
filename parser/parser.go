@@ -81,7 +81,7 @@ func ParseFile(filePath string, incChain []string) *Parser {
 
 	p := newParse(filePath, b, incChain)
 	p.parse()
-	log.Debugf("end parseFile,%+v", filePath)
+	log.Debug("end parseFile,%+v", filePath)
 
 	return p
 }
@@ -115,9 +115,8 @@ OUT:
 			p.parseErr("Expect include or module.")
 		}
 	}
-	log.Debugf("end parse")
+	log.Debug("end parse")
 	p.analyzeDepend()
-	log.Debugf("hhh")
 }
 
 // 获取下一个 token
@@ -205,6 +204,7 @@ func (p *Parser) parseModule() {
 
 // parseModuleSegment 方法是 Parser 结构的一个成员方法，用于解析模块内的内容。
 func (p *Parser) parseModuleSegment() {
+	log.Debug("begin parseModuleSegment")
 	// 使用 expect 方法检查下一个 token 是否为左大括号（lex.TkBraceLeft）。
 	p.expect(lex.TkBraceLeft)
 
@@ -215,7 +215,7 @@ func (p *Parser) parseModuleSegment() {
 		switch p.token.Type {
 		case lex.TkBraceRight: //  如果 token 类型为 lex.TkBraceRight（表示模块声明的结束
 			p.expect(lex.TkSemi) // 则调用 expect 方法检查下一个 token 是否为分号（lex.TkSemi），然后返回
-			log.Debugf("end parseModuleSegment")
+			log.Debug("end parseModuleSegment")
 			return
 		case lex.TkConst: // 如果 token 类型为 lex.TkConst，则调用 parseConst 方法处理常量声明
 			p.parseConst()
@@ -409,11 +409,12 @@ LFOR:
 	p.expect(lex.TkSemi)
 	// 将枚举信息结构 enum 追加到 Enums 字段中。
 	p.Enums = append(p.Enums, enum)
-	// log.Debugf("%+v\n", enum)
 }
 
 // parseStruct 方法是 Parser 结构的一个成员方法，用于解析结构体声明。它遍历由词法分析器生成的 token，并根据 token 的类型执行相应的操作。以下是方法的主要步骤：
 func (p *Parser) parseStruct() {
+	log.Debug("begin parseStruct")
+
 	st := StructInfo{}
 	st.commentTagNum = -9999
 	// 使用 getPreComments 方法获取结构体前的注释并存储在 st.Comment 中。
@@ -454,7 +455,7 @@ func (p *Parser) parseStruct() {
 			st.commentTagNum++
 			m.Tag = int32(st.commentTagNum)
 		}
-		log.Debugf("%+v", m)
+		log.Debug("%+v", m)
 		st.Member = append(st.Member, *m)
 	}
 	// 使用 expect 方法检查下一个 token 是否为分号（lex.TkSemi）。
@@ -463,7 +464,6 @@ func (p *Parser) parseStruct() {
 	// 调用 checkTag 和 sortTag 方法处理结构体成员的标签。
 	// p.sortTag(&st)
 	p.checkTag(&st)
-	// log.Debugf("%+v", utils.FormatJOSN(st))
 
 	// 将结构体信息结构 st 追加到 Structs 字段中。
 	p.Structs = append(p.Structs, st)
@@ -471,6 +471,7 @@ func (p *Parser) parseStruct() {
 
 // parseStructMember 方法是 Parser 结构的一个成员方法，用于解析结构体成员。它遍历由词法分析器生成的 token，并根据 token 的类型执行相应的操作。以下是方法的主要步骤：
 func (p *Parser) parseStructMember() *StructMember {
+	log.Debug("begin parseStructMember")
 	// tag or end
 	// 获取下一个 token。
 	// 如果 token 类型为 lex.TkBraceRight（表示结构体声明的结束），则返回 nil。
@@ -478,6 +479,8 @@ func (p *Parser) parseStructMember() *StructMember {
 	if p.token.Type == lex.TkBraceRight { // }
 		return nil
 	}
+
+	log.Debug("1")
 
 	// 是注释
 	if p.token.Type == lex.TkComment {
@@ -493,6 +496,8 @@ func (p *Parser) parseStructMember() *StructMember {
 	m := &StructMember{}
 	m.Tag = int32(p.token.Value.Int)
 
+	log.Debug("2")
+
 	// 获取下一个 token。
 	// 如果 token 类型为 lex.TkRequire 或 lex.TkOptional，则设置成员的 Require 属性。否则，引发一个解析错误。
 	// require or optional
@@ -504,6 +509,7 @@ func (p *Parser) parseStructMember() *StructMember {
 	} else {
 		p.parseErr("expect require or optional")
 	}
+	log.Debug("5")
 
 	// 获取下一个 token。如果 token 是一个有效的类型或名称，调用 parseType 方法解析类型并将其存储在 m.Type 中。否则，引发一个解析错误。
 	// type
@@ -519,6 +525,7 @@ func (p *Parser) parseStructMember() *StructMember {
 	p.expect(lex.TkName)
 	m.Key = p.token.Value.String
 
+	log.Debug("8")
 	// 获取下一个 token。根据 token 的类型，处理成员的默认值、数组类型或其他情况。如果遇到不符合预期的 token 类型，引发一个解析错误。
 	p.next()
 	if p.token.Type == lex.TkSemi { // ;
@@ -543,16 +550,18 @@ func (p *Parser) parseStructMember() *StructMember {
 		p.parseErr("map, vector, custom type cannot set default value")
 	}
 
+	log.Debug("9")
 	// default
 	// 使用 expect 方法检查下一个 token 是否为分号（lex.TkSemi）。
 	p.next()
 	p.parseStructMemberDefault(m)
 	p.expect(lex.TkSemi) // ;
 
+	log.Debug("11")
 	// 后面同一行的注释
 	t := p.peek()
-	log.Debugf("a: %+v %+v %v", lex.TokenMap[t.Type], *t.Value, t.Line)
-	log.Debugf("b: %+v, %+v, %+v", lex.TokenMap[p.token.Type], p.token.Line, p.token.Value == nil)
+	// log.Debug("a: %+v %+v %v", lex.TokenMap[t.Type], *t.Value, t.Line)
+	// log.Debug("b: %+v, %+v, %+v", lex.TokenMap[p.token.Type], p.token.Line, p.token.Value == nil)
 	if t.Type == lex.TkComment && t.Line == p.token.Line {
 		m.Comment = t.Value.String
 		p.next()
@@ -639,6 +648,7 @@ func (p *Parser) parseStructMemberDefault(m *StructMember) {
 }
 
 func (p *Parser) checkTag(st *StructInfo) {
+	log.Debug("begin check Tag")
 	set := make(map[int32]bool)
 
 	for _, v := range st.Member {
@@ -650,11 +660,13 @@ func (p *Parser) checkTag(st *StructInfo) {
 }
 
 func (p *Parser) sortTag(st *StructInfo) {
+	log.Debug("begin sort Tag")
 	sort.Sort(StructMemberSorter(st.Member))
 }
 
 // Looking for the true type of user-defined identifier
 func (p *Parser) findTNameType(tname string) (lex.TokenType, string, string) {
+	log.Debug("begin findTNameType")
 	for _, v := range p.Structs {
 		if p.Module+"::"+v.Name == tname {
 			return lex.TkStruct, p.Module, p.ProtoName
@@ -721,7 +733,7 @@ func addToSet(m *map[string]bool, module string) {
 }
 
 func (p *Parser) checkDepTName(ty *VarType, dm *map[string]bool, dmj *map[string]string) {
-	log.Debugf("being checkDepTName, %+v, %+v, %+v", ty, dm, dmj)
+	log.Debug("being checkDepTName, %+v, %+v, %+v", ty, dm, dmj)
 	if ty == nil {
 		return
 	}
@@ -751,7 +763,7 @@ func (p *Parser) checkDepTName(ty *VarType, dm *map[string]bool, dmj *map[string
 		p.checkDepTName(ty.TypeV, dm, dmj)
 	}
 
-	log.Debugf("end checkDepTName")
+	log.Debug("end checkDepTName")
 }
 
 // analysis custom type，whether have definition
@@ -763,7 +775,7 @@ func (p *Parser) analyzeTName() {
 		}
 	}
 
-	log.Debugf("end analyzeTName")
+	log.Debug("end analyzeTName")
 }
 
 func (p *Parser) analyzeDefault() {
@@ -788,7 +800,7 @@ func (p *Parser) analyzeDefault() {
 			}
 		}
 	}
-	log.Debugf("end analyzeDefault")
+	log.Debug("end analyzeDefault")
 }
 
 // 分析文件的依赖关系
@@ -802,5 +814,5 @@ func (p *Parser) analyzeDepend() {
 
 	p.analyzeDefault()
 	p.analyzeTName()
-	log.Debugf("end analyzeDepend")
+	log.Debug("end analyzeDepend")
 }
